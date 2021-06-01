@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-By cloning or using code from this repository, you accept any risks involved. Zachary Schallenberger and Nicholas Dunn are not responsible from any negative consequences resulting from the code of this repository on your own computer
+By cloning or using code from this repository, you accept any risks involved. Zachary Schallenberger and Nicholas Dunn are not responsible for any negative consequences resulting from the code of this repository on your own personal computer or device.
 
 | Version | Supported          |
 | ------- | ------------------ |
