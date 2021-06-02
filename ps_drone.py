@@ -21,7 +21,9 @@
 ###########
 
 import threading, select, socket, time, tempfile, multiprocessing, struct, os, sys
-import thread, signal, subprocess
+import _thread, signal, subprocess
+#from __future__ import print_function
+
 
 if os.name == 'posix':	import termios, fcntl	# for getKey(), ToDo: Reprogram for Windows
  
@@ -105,6 +107,8 @@ class Drone(object):
 	def startup(self):
 		# Check for drone in the network and wake it up
 		try:
+			self.printBlue()
+			print ("Attempting connection to drone @IP: "+self.DroneIP)
 			socket.socket().connect((self.DroneIP, 21))
 			socket.socket().close()
 		except:
