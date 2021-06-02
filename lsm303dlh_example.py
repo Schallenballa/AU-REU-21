@@ -1,3 +1,5 @@
+# Example usage of the LSM303DLHC accelerometer/magnetometer
+
 from time import sleep
 import board
 import busio
