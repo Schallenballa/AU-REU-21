@@ -21,13 +21,13 @@ drone.startup()													# Connects to drone and starts subprocesses
 
 drone.reset()													# Sets drone's status to good (LEDs turn green when red)
 while (drone.getBattery()[0]==-1):	time.sleep(0.1)				# Waits until drone has done its reset
-print "Battery: "+str(drone.getBattery()[0])+"%  "+str(drone.getBattery()[1])	# Gives a battery-status
+print ("Battery: "+str(drone.getBattery()[0])+"%  "+str(drone.getBattery()[1]))	# Gives a battery-status
 drone.useDemoMode(True)											# Just give me 15 basic dataset per second (is default anyway)
 
 ##### Mainprogram begin #####
 drone.setConfigAllID()				# Go to multiconfiguration-mode
 drone.sdVideo()						# Choose lower resolution (hdVideo() for...well, guess it)
-drone.frontCam()					# Choose front view
+drone.groundCam()					# Choose front view
 CDC = drone.ConfigDataCount
 while CDC == drone.ConfigDataCount:	time.sleep(0.0001)	# Wait until it is done (after resync is done)
 drone.startVideo()					# Start video-function

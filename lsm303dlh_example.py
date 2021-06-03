@@ -14,4 +14,4 @@ while True:
     print("Acceleration (m/s^2): X=%0.3f Y=%0.3f Z=%0.3f"%accel.acceleration)
     print("Magnetometer (micro-Teslas)): X=%0.3f Y=%0.3f Z=%0.3f"%mag.magnetic)
     print("")
-    sleep(0.5)
+    sleep(5)
