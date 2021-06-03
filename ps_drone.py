@@ -669,7 +669,7 @@ class Drone(object):
 		except:		pass
 		if self.showCommands:
 			if msg.count("COMWDG") < 1:	print (msg)
-		self.__sock.sendto(msg, (self.DroneIP, self.CmdPort))
+		self.__sock.sendto(str.encode(msg), (self.DroneIP, self.CmdPort))
 		self.__keepalive = threading.Timer(0.1, self.__heartbeat)
 		self.__keepalive.start()
 
@@ -696,27 +696,27 @@ class Drone(object):
 
 	# Grabs the pressed key (not yet for Windows)
 	# ToDo: Reprogram for Windows
-	def getKey(self):
-		key =	""
-		fd =	sys.stdin.fileno()
-		if os.name == 'posix':
-			oldterm =		termios.tcgetattr(fd)
-			newattr =		termios.tcgetattr(fd)
-			newattr[3] =	newattr[3] & ~termios.ICANON & ~termios.ECHO
-			termios.tcsetattr(fd, termios.TCSANOW, newattr)
-			oldflags = 		fcntl.fcntl(fd, fcntl.F_GETFL)
-			fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
-			try:        
-				try:	key = sys.stdin.read(1)
-				except IOError: pass
-			finally:
-				termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
-				fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
-		if os.name == 'nt':
-			if msvcrt.kbhit():	key = msvcrt.getch()
-		key += self.__vKey
-		self.__vKey = ""
-		return key
+# 	def getKey(self):
+# 		key =	""
+# 		fd =	sys.stdin.fileno()
+# 		if os.name == 'posix':
+# 			oldterm =		termios.tcgetattr(fd)
+# 			newattr =		termios.tcgetattr(fd)
+# 			newattr[3] =	newattr[3] & ~termios.ICANON & ~termios.ECHO
+# 			termios.tcsetattr(fd, termios.TCSANOW, newattr)
+# 			oldflags = 		fcntl.fcntl(fd, fcntl.F_GETFL)
+# 			fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
+# 			try:        
+# 				try:	key = sys.stdin.read(1)
+# 				except IOError: pass
+# 			finally:
+# 				termios.tcsetattr(fd, termios.TCSAFLUSH, oldterm)
+# 				fcntl.fcntl(fd, fcntl.F_SETFL, oldflags)
+# 		if os.name == 'nt':
+# 			if msvcrt.kbhit():	key = msvcrt.getch()
+# 		key += self.__vKey
+# 		self.__vKey = ""
+# 		return key
 
 	# Drone hops like an excited dog
 	def doggyHop(self):
@@ -965,7 +965,7 @@ class Drone(object):
 				if ip==self.__Config_pipe and not self.__networksuicide:	### Receiving drone-configuration
 					try:
 						if self.__networksuicide:	  break								# Does not stop sometimes, so the loop will be forced to stop
-						cfgdata = cfgdata+self.__Config_pipe.recv(65535)				# Data comes in two or three packages
+						cfgdata = cfgdata+str(self.__Config_pipe.recv(65535))				# Data comes in two or three packages
 						if cfgdata.count("\x00"):										# Last byte of sent config-file, everything was received
 							if self.__networksuicide:	break
 							configdata = (cfgdata.split("\n"))							# Split the huge package into a configuration-list
@@ -1955,7 +1955,7 @@ def getNavdata(packet,choice):
 ###	Threads					###=- 
 ###############################=-
 def reconnect(navdata_pipe, commitsuicideND, DroneIP,NavDataPort):
-	if not commitsuicideND:		navdata_pipe.sendto("\x01\x00\x00\x00", (DroneIP, NavDataPort))
+	if not commitsuicideND:		navdata_pipe.sendto(str.encode("\x01\x00\x00\x00"), (DroneIP, NavDataPort))
 
 def watchdogND(parentPID):
 	global commitsuicideND
@@ -2093,7 +2093,7 @@ if __name__ == "__main__":
 	
 	stop = False
 	while not stop:
-		key = drone.getKey()
+		key = " " #drone.getKey()
 		if key == " ":
 			if drone.NavData["demo"][0][2] and not drone.NavData["demo"][0][3]:	drone.takeoff()
 			else:																drone.land()
