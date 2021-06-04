@@ -1,4 +1,4 @@
-#########
+print #########
 # ps_drone.py
 # (w)+(c) J. Philipp de Graaff, www.playsheep.de, drone@playsheep.de, 2012-2015
 # Project homepage: www.playsheep.de/drone and https://sourceforge.net/projects/ps-drone/
@@ -19,16 +19,17 @@
 ##########
 # Dedicated to my beloved wife.
 ###########
+# Special thanks to Conor Green for porting PS-Drone to Python3 (June 2019).
+# See some of his other great projects here: https://github.com/cgreen18/Auburn-REU-on-UAVs
+###########
 
 import threading, select, socket, time, tempfile, multiprocessing, struct, os, sys
 import _thread, signal, subprocess
-#from __future__ import print_function
 
+if os.name == 'posix':								import termios, fcntl	# for getKey(), ToDo: Reprogram for Windows
 
-if os.name == 'posix':	import termios, fcntl	# for getKey(), ToDo: Reprogram for Windows
- 
-commitsuicideV, showVid, vCruns, lockV, debugV =	False, False, False, threading.Lock(), False	# Global variables for video-decoding
-offsetND, suicideND, commitsuicideND = 0, False, False												# Global variables for NavDava-decoding
+commitsuicideV, showVid, vCruns, lockV, debugV	= False, False, False, threading.Lock(), False	# Global variables for video-decoding
+offsetND, suicideND, commitsuicideND			= 0, False, False												# Global variables for NavDava-decoding
 
 
 #Neu:
@@ -42,7 +43,7 @@ class Drone(object):
 ######################################=-
 	###### Bootup and base configuration
 	def __init__(self):
-		self.__Version = 		"2.1.5"
+		self.__Version = 		"3.2.0 beta"
 		self.__lock = 			threading.Lock()	# To prevent semaphores
 		self.__startTime = 		time.time()
 		self.__speed = 			0.2					# Default drone moving speed in percent.
@@ -51,7 +52,7 @@ class Drone(object):
 		self.valueCorrection = 	False
 		self.selfRotation = 	0.0185				# use this value, if not checked by getSelfRotation()
 		self.stopOnComLoss = 	False				# when there is a communication-problem, drone will land or not
-		
+
 		# Drone communication variables
 		self.DroneIP = 		"192.168.1.1"
 		self.NavDataPort = 	5554
@@ -75,7 +76,7 @@ class Drone(object):
 		self.__VideoReady = 			False
 		self.__vKey =					""
 		self.__SaveVideo = 				False
-		
+
 		# Config variables
 		self.__ConfigData = 			[]
 		self.__ConfigDataCount = 		0
@@ -85,7 +86,7 @@ class Drone(object):
 		self.__ConfigUserID = 			"0a100407"
 		self.__ConfigApplicationID = 	"03016321"
 		self.sendConfigSaveMode = 		False
-		
+
 		# Internal variables
 		self.__NavDataProcess =			""
 		self.__VideoProcess =			""
@@ -102,24 +103,22 @@ class Drone(object):
 		self.__pBlueStr = 				"\033[94m"
 		self.__pPurpleStr = 			"\033[95m"
 		self.__pLineUpStr = 			"\033[1A"
-		
+
 	###### Connect to the drone and start all procedures
 	def startup(self):
 		# Check for drone in the network and wake it up
 		try:
-			self.printBlue()
-			print ("Attempting connection to drone @IP: "+self.DroneIP)
 			socket.socket().connect((self.DroneIP, 21))
 			socket.socket().close()
 		except:
 			self.printRed()
-			print ("Drone is not online")
+			print("Drone is not online")
 			self.printDefault()
 			sys.exit(9)
 
 		# Internal variables
-		self.__CmdCounter = 3												# as there are two raw commands, send next steps
-		self.__calltime = 	0												# to get some time-values to debug
+		self.__CmdCounter 	= 3												# as there are two raw commands, send next steps
+		self.__calltime		= 0												# to get some time-values to debug
 
 		#send the first four initial-commands to the drone
 		self.__sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)		# Open network connection
@@ -131,22 +130,24 @@ class Drone(object):
 
 		##### Initialising timed thread(s) for drone communication
 		# Opening NavData- and Video- Processes
-		self.__VidPipePath = tempfile.gettempdir()+"/dronevid-"+str(threading.enumerate()[0])[-12:-2]+"-"+str(time.time())[-7:].replace(".","")+".h264"
-		self.__net_pipes = []
+		self.__VidPipePath	= tempfile.gettempdir()+"/dronevid-"+str(threading.enumerate()[0])[-12:-2]+"-"+str(time.time())[-7:].replace(".","")+".h264"
+		self.__net_pipes	= []
 		self.__NavData_pipe, navdataChild_pipe 		  = multiprocessing.Pipe()
 		self.__Video_pipe,   videoChild_pipe          = multiprocessing.Pipe()
 		self.__vdecode_pipe, self.__vdecodeChild_pipe = multiprocessing.Pipe()
 
-		self.__NavDataProcess = multiprocessing.Process( target=mainloopND, args=(self.DroneIP,self.NavDataPort,navdataChild_pipe,os.getpid()))
+		self.__NavDataProcess	= multiprocessing.Process( target=mainloopND, args=(self.DroneIP,self.NavDataPort,navdataChild_pipe,os.getpid()))
 		self.__NavDataProcess.start()
-		self.__VideoProcess =   multiprocessing.Process( target=mainloopV, args=(self.DroneIP,self.VideoPort,self.__VidPipePath,videoChild_pipe,os.getpid()))
+		self.__VideoProcess		= multiprocessing.Process( target=mainloopV, args=(self.DroneIP,self.VideoPort,self.__VidPipePath,videoChild_pipe,os.getpid()))
 		self.__VideoProcess.start()
-		self.__vDecodeProcess = multiprocessing.Process( target=vDecode, args=(self.__VidPipePath,self.__vdecodeChild_pipe,os.getpid()))
+		self.__vDecodeProcess	= multiprocessing.Process( target=vDecode, args=(self.__VidPipePath,self.__vdecodeChild_pipe,os.getpid()))
+		self.__vDecodeProcess.start()
+
 		# There is a third process called "self.__vDecodeProcess" for decoding video, initiated and started around line 880
 
 		# Final settings
 		self.useDemoMode(True) 		# This entry is necessary for the drone's firmware, otherwise the NavData contains just header and footer
-		self.setConfig("custom:session_id","-all")	
+		self.setConfig("custom:session_id","-all")
 		self.getNDpackage(["demo"])
 
 		time.sleep(1)
@@ -161,35 +162,35 @@ class Drone(object):
 				self.__threadSendConfig.start()
 				time.sleep(0.05)
 			time.sleep(0.01)
-		
+
 	###### Clean Shutdown
-	def shutdown(self):								
+	def shutdown(self):
 		if self.__shutdown:	sys.exit()
 		self.__shutdown = True
-		if self.debug: print ("Shutdown...")
+		if self.debug:	print("Shutdown...")
 		self.land()
 		self.thrust(0,0,0,0)
-		try:	self.__NavData_pipe.send("die!")
-		except:	pass
+		try:			self.__NavData_pipe.send("die!")
+		except:			pass
 		self.__Video_pipe.send("uninit")
 		t=time.time()
-		while	self.__VideoReady and (time.time()-t)<5:	time.sleep(0.1)
-		try:	self.__Video_pipe.send("die!")
-		except:	pass
+		while			self.__VideoReady and (time.time()-t)<5:	time.sleep(0.1)
+		try:			self.__Video_pipe.send("die!")
+		except:			pass
 
 		time.sleep(0.5)
-		try:	self.__VideoProcess.terminate()
-		except:	pass
-		try:	self.__vDecodeProcess.terminate()
-		except:	pass
-		try:	self.__NavDataProcess.terminate()
-		except:	pass
+		try:			self.__VideoProcess.terminate()
+		except:			pass
+		try:			self.__vDecodeProcess.terminate()
+		except:			pass
+		try:			self.__NavDataProcess.terminate()
+		except:			pass
 
 		self.__stopnetwork()
-		try:	self.__threadSendConfig.join()
-		except:	pass
-		try:	self.__threadReceiveData.join()
-		except:	pass
+		try:			self.__threadSendConfig.join()
+		except:			pass
+		try:			self.__threadReceiveData.join()
+		except:			pass
 		self.__keepalive.cancel()
 		sys.exit()
 
@@ -228,7 +229,7 @@ class Drone(object):
 	def SaveVideo(self):			return self.__SaveVideo
 	@property
 	def ConfigData(self):			return self.__ConfigData
-	@property	
+	@property
 	def ConfigDataCount(self):		return self.__ConfigDataCount
 	@property
 	def ConfigDataTimeStamp(self):	return self.__ConfigDataTimeStamp
@@ -238,9 +239,9 @@ class Drone(object):
 	def ConfigSessionID(self):		return self.__ConfigSessionID
 	@property
 	def ConfigUserID(self):			return self.__ConfigUserID
-	@property	
+	@property
 	def ConfigApplicationID(self):	return self.__ConfigApplicationID
-		
+
 ######################=-
 ### Drone commands ###=-
 ######################=-
@@ -264,7 +265,7 @@ class Drone(object):
 		try:
 			value = float(*args[0])
 			self.__ConfigSessionID = normalLen8(value)
-			self.setConfig("custom:session_id", self.__ConfigSessionID)		
+			self.setConfig("custom:session_id", self.__ConfigSessionID)
 		except:		return (self.__ConfigSessionID)
 
 	def setConfigUserID(self, *args):
@@ -282,7 +283,7 @@ class Drone(object):
 		except:		return (self.__ConfigApplicationID)
 
 	def setConfigAllID(self):
-		self.setConfig("custom:session_id", self.__ConfigSessionID)		
+		self.setConfig("custom:session_id", self.__ConfigSessionID)
 		self.setConfig("custom:profile_id", self.__ConfigUserID)
 		self.setConfig("custom:application_id", self.__ConfigApplicationID)
 
@@ -296,7 +297,7 @@ class Drone(object):
 
 	def mtrim(self):
 		self.at("CALIB", [0])
-	
+
 	def mantrim(self, thetaAngle, phiAngle, yawAngle):		# manual Trim
 		if self.valueCorrection:
 			try:		thetaAngle = 		float(thetaAngle)
@@ -348,14 +349,14 @@ class Drone(object):
 	# Relative movement to controller in x, y and z-direction and rotation
 	def relMove(self, leftright, backwardforward, downup, turnleftright, eastwest, northturnawayaccuracy):
 		if self.valueCorrection:
-			try:		leftright = 		float(leftright)
-			except:		leftright = 		0.0
-			try:		backwardforward = 	float(backwardforward)
-			except:		backwardforward = 	0.0
-			try:		downup = 			float(downup)
-			except:		downup = 			0.0
-			try:		turnleftright = 	float(turnleftright)
-			except:		turnleftright = 	0.0
+			try:						leftright = 		 float(leftright)
+			except:						leftright = 		 0.0
+			try:						backwardforward = 	 float(backwardforward)
+			except:						backwardforward = 	 0.0
+			try:						downup = 			 float(downup)
+			except:						downup = 			 0.0
+			try:						turnleftright = 	 float(turnleftright)
+			except:						turnleftright = 	 0.0
 		if leftright >  1.0:			leftright = 		 1.0
 		if leftright < -1.0:			leftright =			-1.0
 		if backwardforward >  1.0:		backwardforward =	 1.0
@@ -398,7 +399,7 @@ class Drone(object):
 		except:	speed=self.__speed
 		self.move(0.0,0.0, self.__checkSpeedValue(speed),0.0)
 
-	def moveDown(self,*args):
+	def moveDown(self,args):
 		try:	speed=args[0]
 		except:	speed=self.__speed
 		self.move(0.0,0.0,-self.__checkSpeedValue(speed),0.0)
@@ -424,7 +425,7 @@ class Drone(object):
 		speed = 	self.__checkSpeedValue(speed)
 		ospeed = 	speed									# stores the given speed-value
 		reftime = 	time.time()
-		accurateness = 0		
+		accurateness = 0
 		try:	accurateness = args[0]
 		except:	pass
 		if accurateness<=0:
@@ -622,7 +623,7 @@ class Drone(object):
 		# Drone will shut down, if its flight-angle is more than set.
 
 #   Control the drone's LED.
-	def led(self, animation, frequency, duration):	
+	def led(self, animation, frequency, duration):
 		if animation < 21 and frequency > 0 and duration >= 0:
 			self.at("LED", [animation, float(frequency), duration])
 
@@ -652,7 +653,7 @@ class Drone(object):
 	def at(self, command, params):
 		self.__lock.acquire()
 		paramLn = ""
-		if params:	
+		if params:
 			for p in params:
 				if type(p) 	 == int:	paramLn += ","+str(p)
 				elif type(p) == float:	paramLn += ","+str(struct.unpack("i", struct.pack("f", p))[0])
@@ -668,8 +669,8 @@ class Drone(object):
 		try:		self.__keepalive.cancel()
 		except:		pass
 		if self.showCommands:
-			if msg.count("COMWDG") < 1:	print (msg)
-		self.__sock.sendto(str.encode(msg), (self.DroneIP, self.CmdPort))
+			if msg.count("COMWDG") < 1:	print(msg)
+		self.__sock.sendto(msg.encode(), (self.DroneIP, self.CmdPort))
 		self.__keepalive = threading.Timer(0.1, self.__heartbeat)
 		self.__keepalive.start()
 
@@ -706,7 +707,7 @@ class Drone(object):
 # 			termios.tcsetattr(fd, termios.TCSANOW, newattr)
 # 			oldflags = 		fcntl.fcntl(fd, fcntl.F_GETFL)
 # 			fcntl.fcntl(fd, fcntl.F_SETFL, oldflags | os.O_NONBLOCK)
-# 			try:        
+# 			try:
 # 				try:	key = sys.stdin.read(1)
 # 				except IOError: pass
 # 			finally:
@@ -756,60 +757,60 @@ class Drone(object):
 
 	def printDefault(self, *args):
 		if os.name == 'posix':
-			print (self.__pDefaultStr),
+			print(self.__pDefaultStr,end =" ")
 			try:
 				if len(*args) > 0:
-					for i in args:	print (i),
-					print (self.__pDefaultStr)
+					for i in args:	print(i,end =" ")
+					print(self.__pDefaultStr)
 			except: pass
 
 	def printRed(self, *args):
 		if os.name == 'posix':
-			print (self.__pRedStr),
+			print(self.__pRedStr,end =" ")
 			try:
 				if len(*args) > 0:
-					for i in args:	print (i),
-					print (self.__pDefaultStr)
+					for i in args:	print(i,end =" ")
+					print(self.__pDefaultStr)
 			except: pass
 
 	def printGreen(self, *args):
 		if os.name == 'posix':
-			print (self.__pGreenStr),
+			print(self.__pGreenStr,end =" ")
 			try:
 				if len(*args) > 0:
-					for i in args:	print (i),
-					print (self.__pDefaultStr)
+					for i in args:	print(i,end =" ")
+					print(self.__pDefaultStr)
 			except: pass
 
 	def printYellow(self, *args):
 		if os.name == 'posix':
-			print (self.__pYellowStr),
+			print(self.__pYellowStr,end =" ")
 			try:
 				if len(*args) > 0:
-					for i in args:	print (i),
-					print (self.__pDefaultStr)
+					for i in args:	print(i,end =" ")
+					print(self.__pDefaultStr)
 			except: pass
 
 	def printBlue(self, *args):
 		if os.name == 'posix':
-			print (self.__pBlueStr),
+			print(self.__pBlueStr,end =" ")
 			try:
 				if len(*args) > 0:
-					for i in args:	print (i),
-					print (self.__pDefaultStr)
+					for i in args:	print(i,end =" ")
+					print(self.__pDefaultStr)
 			except: pass
 
 	def printPurple(self, *args):
 		if os.name == 'posix':
-			print (self.__pPurpleStr),
+			print(self.__pPurpleStr,end =" ")
 			try:
 				if len(*args) > 0:
-					for i in args:	print (i),
-					print (self.__pDefaultStr)
+					for i in args:	print(i,end =" ")
+					print(self.__pDefaultStr)
 			except: pass
 
 	def printLineUp(self):
-		if os.name == 'posix':	print (self.__pLineUpStr),
+		if os.name == 'posix':	print(self.__pLineUpStr,end =" ")
 
 
 ##################################=-
@@ -852,21 +853,21 @@ class Drone(object):
 			self.shutdown()
 			sys.exit()
 		return (debug,showCommands)
-			
+
 	# Thread for sending the configuration. It is asynchronous but save.
 	# The configuration-requests are in a queue, the first entry is sent. NavData will contain a "Control command ACK" status-bit,...
 	# ...that configuration is ready to be set. This will be confirmed and the procedure waits until this bit is 0 again; then the next entry will be processed.
-	# In savemode, there is a check whether the configuration has been changed correctly by requesting the current/latest configuration and double-checking this value. 
+	# In savemode, there is a check whether the configuration has been changed correctly by requesting the current/latest configuration and double-checking this value.
 	def __sendConfig(self):
 		sleeptime, getconfigtag, self.__sendConfigRunning = 0.001, False, True
 		while not self.__networksuicide:
 			if len(self.__ConfigQueue):										# If there is something in the queue...
-				if self.__ConfigQueue[0][-1]:	self.sendConfigIDs()		# ...check for multiuserconfig-request (and send it)					
+				if self.__ConfigQueue[0][-1]:	self.sendConfigIDs()		# ...check for multiuserconfig-request (and send it)
 				self.__ConfigSending = True									# Set tag, to show sending is in process
 				qlen = len(self.__ConfigQueue)
 				if qlen > 1:												# Testing for double entries, preventing a ping-pong in save-mode
 					i = 1
-					while True:									   			
+					while True:
 						if i >= qlen:	break
 						if self.__ConfigQueue[0][0].lower() == self.__ConfigQueue[i][0].lower():
 							self.__ConfigQueue.remove(self.__ConfigQueue[0])# Delete double entries
@@ -891,8 +892,8 @@ class Drone(object):
 						if self.__ConfigData[i][0].find(self.__ConfigQueue[0][0]) > -1:
 							if self.__ConfigData[i][1] != self.__ConfigQueue[0][1]:
 								if self.debug:
-									print ("   Configuration missmatched, resending !")
-									print ("   "+self.__ConfigData[i][0]+" should be \""+self.__ConfigQueue[0][1]+"\" is \""+self.__ConfigData[i][1]+"\"")
+									print("   Configuration missmatched, resending !")
+									print("   "+self.__ConfigData[i][0]+" should be \""+self.__ConfigQueue[0][1]+"\" is \""+self.__ConfigData[i][1]+"\"")
 									self.__ConfigQueue.append(self.__ConfigQueue[0])		# If value is not correctly set, requeue !
 				self.__ConfigQueue.remove(self.__ConfigQueue[0])							# Configuration has been (correctly) set, delete request from queue and go on
 				if self.__networksuicide:	self.__ConfigQueue=[]
@@ -902,11 +903,11 @@ class Drone(object):
 					getconfigtag = True
 					self.__ConfigSending = False
 				else:	time.sleep(sleeptime)
-		if self.debug:	print ("sendConfig-Tread :   committed suicide")
+		if self.debug:	print("sendConfig-Tread :   committed suicide")
 
 	def __receiveData(self):
 		self.__net_pipes=[]
-		self.__net_pipes.append(self.__NavData_pipe)	
+		self.__net_pipes.append(self.__NavData_pipe)
 		self.__net_pipes.append(self.__Video_pipe)
 		self.__Config_pipe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)		#TCP
 		self.__Config_pipe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)	# Allow to reuse the address
@@ -925,7 +926,7 @@ class Drone(object):
 				if ip == self.__vdecode_pipe:		### Receiving imagedata and feedback from videodecode-process
 					try:
 						cmd, VideoImageCount, VideoImage, VideoDecodeTime = self.__vdecode_pipe.recv()	# Imagedata
-						if self.showCommands and cmd!="Image" :	print ("** vDec -> Com :",cmd)	
+						if self.showCommands and cmd!="Image" :	print("** vDec -> Com :",cmd , end =" ")
 						if cmd == "suicided":				self.__Video_pipe.send("vd died")		# videodecode-process died
 						if cmd == "foundCodec":				self.__Video_pipe.send("foundCodec")	# the codec of the videostream has been found, do not flood anymore
 						if cmd == "VideoUp":				self.__VideoReady = True				# Imagedata is available
@@ -940,11 +941,12 @@ class Drone(object):
 				if ip == self.__Video_pipe:		### Receiving feedback from videostream-process
 					try:
 						cmd = self.__Video_pipe.recv()
-						if self.showCommands and cmd != "":	print ("** Vid -> Com : ",cmd)
+						if self.showCommands and cmd != "":	print("** Vid -> Com : " + cmd , end =" ")
 						if cmd == "vDecProc":											# videodecode-process should start
 							if not self.__vDecodeRunning:
 								self.__vDecodeProcess = multiprocessing.Process( target=vDecode, args=(self.__VidPipePath,self.__vdecodeChild_pipe,os.getpid()))
 								self.__vDecodeProcess.start()
+#								self.__VideoProcess.start()
 								self.__net_pipes.append(self.__vdecode_pipe)
 								self.__vDecodeRunning = True
 
@@ -965,7 +967,7 @@ class Drone(object):
 				if ip==self.__Config_pipe and not self.__networksuicide:	### Receiving drone-configuration
 					try:
 						if self.__networksuicide:	  break								# Does not stop sometimes, so the loop will be forced to stop
-						cfgdata = cfgdata+str(self.__Config_pipe.recv(65535))				# Data comes in two or three packages
+						cfgdata = cfgdata+self.__Config_pipe.recv(65535).decode()				# Data comes in two or three packages
 						if cfgdata.count("\x00"):										# Last byte of sent config-file, everything was received
 							if self.__networksuicide:	break
 							configdata = (cfgdata.split("\n"))							# Split the huge package into a configuration-list
@@ -975,11 +977,11 @@ class Drone(object):
 							self.__ConfigDataTimeStamp = time.time()-self.__startTime	# Set a timestamp for a better coordination
 							self.__ConfigDataCount+=1									# Alters the count of received Configdata for a better coordination
 							configdata, cfgdata = [], ""
-							if self.showCommands:	print ("Got "+str(len(self.__ConfigData))+" Configdata "+str(time.time()-self.__calltime))
+							if self.showCommands:	print("Got "+str(len(self.__ConfigData))+" Configdata "+str(time.time()-self.__calltime))
 							self.__calltime=0
 					except IOError:	pass
 				debug, showCommands = self.__checkAndReact(debug, showCommands)		# Check for errors and things to change
-		if self.debug:	print ("receiveData-Thread : committed suicide")
+		if self.debug:	print("receiveData-Thread : committed suicide")
 		# TestMe
 		try:	self.__Config_pipe.close()
 		except:	pass
@@ -1020,7 +1022,7 @@ def normalLen8(value):
 	vlen =			min(len(value),8)
 	normal = 		zero[0:8-vlen] + value[0:8]
 	return normal[0:8].lower()
-	
+
 ##################################################################################################
 ###### Receive and Decode Video																######
 ##################################################################################################
@@ -1034,7 +1036,7 @@ def watchdogV(parentPID, ownPID):
 			try:	subprocess.Popen(["kill",str(os.getpid())],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
 			except:	pass
 
-# Thread to capture, decode and display the video-stream			
+# Thread to capture, decode and display the video-stream
 def vCapture(VidPipePath, parent_pipe):
 	import cv2
 	global vCruns, commitsuicideV, showVid, lockV, debugV
@@ -1045,8 +1047,9 @@ def vCapture(VidPipePath, parent_pipe):
 	t = 		time.time()
 	parent_pipe.send(("VideoUp",0,0,0))
 	capture = 	cv2.VideoCapture(VidPipePath)
+#	capture = 	cv2.VideoCapture("tcp://192.168.1.1:5555")
 	ImgCount =	0
-	if debugV:	print ("CAPTURE: "+str(time.time()-t))
+	if debugV:	print("CAPTURE: "+str(time.time()-t))
 	time.sleep(0.2)
 	parent_pipe.send(("foundCodec",0,0,0))
 	time.sleep(0.2)
@@ -1070,19 +1073,21 @@ def vCapture(VidPipePath, parent_pipe):
 		tlag =				time.time()-declag
 
 		if not codecOK and success:
+			
 			try:
 				if image.shape[:2]==(360,640) or image.shape[:2]==(368,640) or image.shape[:2]==(720,1280) or image.shape[:2]==(1080,1920):
 					codecOK = True
-					if debugV:	print ("Codec seems OK")
+					if debugV:	print("Codec seems OK")
 				else:
-					if debugV:	print ("Codec failure")
+					if debugV:	print("Codec failure")
 					parent_pipe.send(("reset",0,0,0))
 					commitsuicideV = True
 			except:
-					if debugV:	print ("Codec failure")
+					if debugV:	print("Codec failure")
 					parent_pipe.send(("reset",0,0,0))
 					commitsuicideV = True
-		if codecOK:
+					codecOK	= False
+		if success and codecOK:
 			if not (imageXsize == image.shape[1]) or not (imageYsize == image.shape[0]):
 				cv2.destroyAllWindows()
 				imageYsize, imageXsize = image.shape[:2]
@@ -1113,7 +1118,7 @@ def vCapture(VidPipePath, parent_pipe):
 	vCruns = False
 	cv2.destroyAllWindows()
 	capture.release()
-	if debugV:	print ("vCapture-Thread :    committed suicide")
+	if debugV:	print("vCapture-Thread :    committed suicide")
 
 ### Process to decode the videostream in the FIFO-Pipe, stored there from main-loop.
 # Storing and decoding must not be processed in the same process, thats why decoding is external.
@@ -1128,27 +1133,29 @@ def vDecode(VidPipePath, parent_pipe, parentPID):
 
 	while not commitsuicideV:
 		in_pipe, out_pipe, dummy2 = select.select([parent_pipe], [], [], 0.1)		# When something is in a pipe...
-		cmd = parent_pipe.recv()
-		if showCommands:	print ("** Com -> vDec : ",cmd)
-		if cmd == "die!":			commitsuicideV = True
-		elif cmd == "reset":		commitsuicideV = True
-		elif cmd == "show":			showVid = 		True
-		elif cmd == "hide":			showVid =		False
-		elif cmd == "debug":
-			debugV = True
-			print ("vDecode-Process :    running")
-			if vCruns:	print ("vCapture-Thread :    running")
-		elif cmd == "undebug":		debugV =		False
-		elif cmd == "showCommands":	showCommands =	True
-		elif cmd == "hideCommands":	showCommands =	False
+		try:
+			cmd = parent_pipe.recv()
+			if showCommands:	print("** Com -> vDec : ",cmd ,end =" ")
+			if cmd == "die!":			commitsuicideV = True
+			elif cmd == "reset":		commitsuicideV = True
+			elif cmd == "show":			showVid = 		True
+			elif cmd == "hide":			showVid =		False
+			elif cmd == "debug":
+				debugV = True
+				print("vDecode-Process :    running")
+				if vCruns:	print("vCapture-Thread :    running")
+			elif cmd == "undebug":		debugV =		False
+			elif cmd == "showCommands":	showCommands =	True
+			elif cmd == "hideCommands":	showCommands =	False
+		except:		pass
 	Thread_vCapture.join()
 	parent_pipe.send(("suicided",0,0,0))
 	time.sleep(0.1)
-	if debugV:	print ("vDecode-Process :    committed suicide")
+	if debugV:	print("vDecode-Process :    committed suicide")
 
 #####################################################
 def VideoReceiveWatchdog(parent_pipe,name, debugV):
-	if debugV:	print ("WHATCHDOG reset von",name)
+	if debugV:	print("WHATCHDOG reset von",name ,end =" ")
 	parent_pipe.send(("reset",0,0,0))
 
 def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
@@ -1165,10 +1172,10 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 
 	while not commitsuicideV:
 		in_pipe, out_pipe, dummy2 = select.select(pipes, [], [], 0.1)		# When something is in a pipe...
-		for ip in in_pipe:	
+		for ip in in_pipe:
 			if ip == parent_pipe:
 				cmd = parent_pipe.recv()
-				if showCommands:			print ("** Com -> Vid : ",cmd)
+				if showCommands:			print("** Com -> Vid : ",cmd ,end =" ")
 				if cmd == "die!":
 					if inited:
 						suicide = True
@@ -1211,7 +1218,7 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 					parent_pipe.send("hideCommands")
 				elif cmd == "debug":
 					debugV = True
-					print ("Video-Process :      running")
+					print("Video-Process :      running")
 					parent_pipe.send("debug")
 				elif cmd == "undebug":
 					debugV = False
@@ -1225,7 +1232,7 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 						saveVideo = True						# ... fall back to savemode
 						parent_pipe.send("saveVideo")			# Inform the main process
 						unsureMode = False
-						foundCodec = True	
+						foundCodec = True
 					parent_pipe.send("vDecProc")
 				elif cmd == "vDecProcON":
 					rawVideoFrame		= ""
@@ -1240,7 +1247,7 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 						vstream_pipe.setblocking(0)
 						vstream_pipe.connect_ex((DroneIP,VideoPort))
 						pipes.append(vstream_pipe)
-					write2pipe = open(VidPipePath,"w+")
+					write2pipe = open(VidPipePath,"wb",buffering=0)
 					suicide = False
 					inited = True
 					preinited = False
@@ -1266,7 +1273,7 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 							saveVideo = True						# ... fall back to savemode
 							parent_pipe.send("saveVideo")			# Inform the main process
 							unsureMode = False
-							foundCodec = True	
+							foundCodec = True
 						parent_pipe.send("VideoDown")
 						parent_pipe.send("vDecProc")
 						parent_pipe.send("debug")
@@ -1277,7 +1284,7 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 
 			### Grabs the Videostream and store it in a fifo-pipe for decoding.
 			# The decoder has to guess the videostream-format which takes around 266 video-frames.
-			#    So the stream is preprocessed, I-Frames will cut out while initiation and a flood of copies 
+			#    So the stream is preprocessed, I-Frames will cut out while initiation and a flood of copies
 			#	 will be send to the decoder, till the proper decoder for the videostream is found.
 			# In case of a slow or midspeed-video, only a single or a few copied I-frames are sent to the decoder.
 			if ip == vstream_pipe:
@@ -1291,27 +1298,29 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 					if inited and not reset:
 						### Analyze raw datastream
 						frameStart = False
-						if not saveVideo and lenVideoPackage>45 and videoPackage[36:40]=="\x00\x00\x00\x00" and videoPackage[41:44]=="\x00\x01\x00":
+						if not saveVideo and lenVideoPackage>45 and videoPackage[36:40].hex()=="00000000" and videoPackage[41:44].hex()=="000100":
 							frameStart		= True
 							rawVideoFrame	= VidStreamSnippet
 							lastIFrame		= iFrame
-							if videoPackage[30] == "\x01":			# I-Frame
+							if videoPackage[30] == 1:			# I-Frame
 								iFrame, unsureMode	= True, False
 								VidStreamSnippet	= videoPackage
 								FrameCount += 1
-							elif videoPackage[30] == "\x03":		# P-Frame
+							elif videoPackage[30] == 3:		# P-Frame
 								iFrame = False
 								if not unsureMode:
 									if foundCodec:		VidStreamSnippet	= videoPackage
 #									else:				VidStreamSnippet   += videoPackage
 								FrameCount += 1
-							else:	
+#								print(FrameCount)
+
+							else:
 								iFrame				= False
 								VidStreamSnippet	= videoPackage
 								if debugV:
-									print ("*** Odd h264 Frametype: ",FrameCount),
-									print (videoPackage[30:50].encode("hex"))
-									print (" - ",videoPackage[31:40].find("\x00\x00\x00"),ord(videoPackage[30]))
+									print("*** Odd h264 Frametype: ",FrameCount, end =" ")
+									print(videoPackage[30:50].encode("hex"))
+									print(" - ",videoPackage[31:40].find("\x00\x00\x00"),ord(videoPackage[30]))
 						elif not unsureMode:
 							VidStreamSnippet+=videoPackage		# Merging video-snippets
 
@@ -1320,10 +1329,10 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 						# An MPEG4-Stream is not confirmed. Boost or fallback to savemode.
 						lenRawVideoFrame	= len(rawVideoFrame)
 
-#						print slowVideo, frameStart, saveVideo, foundCodec, lenRawVideoFrame
+#						print(slowVideo, frameStart, saveVideo, foundCodec, lenRawVideoFrame
 
 						if not saveVideo and unsureMode and frameStart and lastIFrame and lenRawVideoFrame>0:
-							if not searchCodecTime:	
+							if not searchCodecTime:
 								searchCodecTime = time.time()			# Video is freshly initiated
 							elif (time.time()-searchCodecTime) > 2.0:	# Waited too long for an MPEG4 stream confirmation...
 								saveVideo = True						# ... fall back to savemode
@@ -1332,31 +1341,41 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 								foundCodec = True						# switch off codec guess speed-up
 						elif not saveVideo and frameStart and not unsureMode and not foundCodec and lenRawVideoFrame>0:
 							# Boost Frames
-							boost=((1024*512)/len(VidStreamSnippet))+1
-#							print "Boost IN", len(VidStreamSnippet)
+							boost=int((1024*512)/len(VidStreamSnippet))+1
 							for i in range(0,boost):
-								try: write2pipe.write(rawVideoFrame)
-								except: print ("Boost ERROR")
+								try:
+									write2pipe.write(rawVideoFrame)
+									write2pipe.flush()
+								except: pass	#print("Boost ERROR")
 							burstFrameCount+=1
 							# Give up after to much tries
-							if burstFrameCount>10:		
+							if burstFrameCount>10:
 								parent_pipe.send(("reset",0,0,0))
 								time.sleep(0.2)
 								burstFrameCount=0
-								if debugV: print ("Too many pictures send while guessing the codec. Resetting.")
+								if debugV: print("To many pictures send while guessing the codec. Resetting.")
 
 						# Normal Pipeing
 						elif not slowVideo and frameStart and (saveVideo or foundCodec) and lenRawVideoFrame>0:
 							if burstFrameCount==0 and lastIFrame:		burstFrameCount = 1
 							if burstFrameCount==1:
 								try:	write2pipe.write(rawVideoFrame)
-								except: print ("Pipe Error")
+								except: pass	#print("Pipe Error")
 
 						# Just show the I-Frame for slow-video-mode (and repeat for less delay in midVideo()-mode)
 						elif not saveVideo and foundCodec and slowVideo and lastIFrame and lenRawVideoFrame>0:
-							for i in range(0,frameRepeat):			write2pipe.write(rawVideoFrame)	
+							for i in range(0,frameRepeat):
+								try:
+									write2pipe.write(rawVideoFrame)
+									write2pipe.flush()
+								except:			pass
 						# Save-Mode
-						elif saveVideo:								write2pipe.write(videoPackage)
+						elif saveVideo:
+							try:
+								write2pipe.write(videoPackage)
+#								write2pipe.write(rawVideoFrame)
+								write2pipe.flush()
+							except:				pass
 
 
 	try:
@@ -1368,19 +1387,19 @@ def mainloopV(DroneIP, VideoPort, VidPipePath, parent_pipe, parentPID):
 	try:	vstream_pipe.close()
 	except:	pass
 	try:
-		VidPipe=open(VidPipePath,"r")
+		VidPipe=open(VidPipePath,"rb")
 		r = "1"
 		while len(r):	r=VidPipe.read()
 		FIFO.close()
 	except:	pass
 	try:	os.remove(VidPipePath)
 	except:	pass
-	if debugV:	print ("Video-Process :      committed suicide")
+	if debugV:	print("Video-Process :      committed suicide")
 	try:	vstream_pipe.close()
 	except:	pass
-	
 
-	
+
+
 ##################################################################################################
 ###### Receive and Decode NavData															######
 ##################################################################################################
@@ -1438,7 +1457,7 @@ def decode_Header(data):
 ##### ID = 0 ### "demo" #######################################################
 def decode_ID0(packet):		# NAVDATA_DEMO_TAG
 	dataset = struct.unpack_from("HHIIfffifffIffffffffffffIIffffffffffff", packet, 0)
-	if dataset[1] != 148:		print ("*** Warning : Navdata-Demo-Options-Package (ID=0) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 148:		print("*** Warning : Navdata-Demo-Options-Package (ID=0) has the wrong size. ("+str(dataset[1])+")")
 	demo=[[0,0,0,0,0,0,0,0,0,0,0,0],0,[0,0,0],0,[0,0,0],0,[0,0,0,0,0,0,0,0,0],[0,0,0],0,0,[0,0,0,0,0,0,0,0,0],[0,0,0]]
 	demo[0][ 0] = dataset[2]>>15&1	# DEFAULT			(bool)
 	demo[0][ 1] = dataset[2]>>16&1	# INIT				(bool)
@@ -1457,7 +1476,7 @@ def decode_ID0(packet):		# NAVDATA_DEMO_TAG
 	demo[2][1]	=dataset[5]/1000.0	# phi						roll  in degrees						(float)
 	demo[2][2]	=dataset[6]/1000.0	# psi						yaw   in degrees						(float)
 	demo[3]		=dataset[7]/10.0	# altitude					altitude in centimetres					(int32)
-	demo[4][0]	=dataset[8]			# vx						estimated speed in X in mm/s			(float)	
+	demo[4][0]	=dataset[8]			# vx						estimated speed in X in mm/s			(float)
 	demo[4][1]	=dataset[9]			# vy						estimated speed in Y in mm/s			(float)
 	demo[4][2]	=dataset[10]		# vz						estimated speed in Z in mm/s			(float)
 	demo[5]		=dataset[11]		# num_frames				streamed frame index 					(uint32) (Not used to integrate in video stage)
@@ -1468,22 +1487,22 @@ def decode_ID0(packet):		# NAVDATA_DEMO_TAG
 	for i in range (0,9,1):	demo[10][i]	= dataset[26+i]	# drone_camera_rot			Camera parameters computed by drone		(float matrix33)
 	for i in range (0,3,1):	demo[11][i]	= dataset[35+i]	# drone_camera_trans		Deprecated ! Don't use !				(float vector31)
 	return(demo)
-	
+
 ##### ID = 1 ### "time" #######################################################
 def decode_ID1(packet):			#NAVDATA_TIME_TAG
 	dataset = struct.unpack_from("HHI", packet, 0)
-	if dataset[1] != 8:		print ("*** Warning : navdata-time-Options-Package (ID=1) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 8:		print("*** Warning : navdata-time-Options-Package (ID=1) has the wrong size. ("+str(dataset[1])+")")
 	time=[0.0]
 	# Value: 11 most significant bits represent the seconds, and the 21 least significant bits represent the microseconds.
 	for i in range(0,21,1):		time[0] += ((dataset[2]>>i&1)*(2**i))		# Calculating the millisecond-part
 	time[0] /= 1000000
 	for i in range(21,32,1):	time[0] += (dataset[2]>>i&1)*(2**(i-21))	# Calculating second-part
 	return(time)
-	
+
 ##### ID = 2 ### "raw_measures" ################################################
 def decode_ID2(packet):			#NAVDATA_RAW_MEASURES_TAG
 	dataset = struct.unpack_from("HHHHHhhhhhIHHHHHHHHHHHHhh", packet, 0)
-	if dataset[1] != 52:		print ("*** ERROR : navdata-raw_measures-Options-Package (ID=2) has the wrong size !!!")
+	if dataset[1] != 52:		print("*** ERROR : navdata-raw_measures-Options-Package (ID=2) has the wrong size !!!")
 	raw_measures = [[0,0,0],[0,0,0],[0,0],0,0,0,0,0,0,0,0,0,0,0,0,0]
 	for i in range(0,3,1):	raw_measures[0][i] = dataset[2+i]	# raw_accs[xyz]			filtered accelerometer-datas [LSB]	(uint16)
 	for i in range(0,3,1):	raw_measures[1][i] = dataset[5+i]	# raw_gyros[xyz]		filtered gyrometer-datas [LSB]		(int16)
@@ -1506,7 +1525,7 @@ def decode_ID2(packet):			#NAVDATA_RAW_MEASURES_TAG
 ##### ID = 3 ### "phys_measures" ##############################################
 def decode_ID3(packet):  		#NAVDATA_PHYS_MEASURES_TAG
 	dataset = struct.unpack_from("HHfHffffffIII", packet, 0)
-	if dataset[1] != 46:		print ("*** Warning : navdata-phys_measures-Options-Package (ID=3) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 46:		print("*** Warning : navdata-phys_measures-Options-Package (ID=3) has the wrong size. ("+str(dataset[1])+")")
 	phys_measures = [0,0,[0,0,0],[0,0,0],0,0,0]
 	phys_measures[0] = dataset[2]	#float32   accs_temp
 	phys_measures[1] = dataset[3]	#uint16    gyro_temp
@@ -1514,14 +1533,14 @@ def decode_ID3(packet):  		#NAVDATA_PHYS_MEASURES_TAG
 	phys_measures[5] = dataset[11]	#uint32    vrefEpson            ref volt Epson gyro [LSB]
 	phys_measures[6] = dataset[12]	#uint32    vrefIDG              ref volt IDG gyro [LSB]
 	dataset = struct.unpack_from(">HHfHffffffIII", packet, 0) 	#switch from little to big-endian
-	for i in range(0,3,1):	phys_measures[2][i] = dataset[4+i]	#float32   phys_accs[xyz] 
+	for i in range(0,3,1):	phys_measures[2][i] = dataset[4+i]	#float32   phys_accs[xyz]
 	for i in range(0,3,1):	phys_measures[3][i] = dataset[7+i]	#float32   phys_gyros[xyz]
 	return(phys_measures)
 
 ##### ID = 4 ### "gyros_offsets" ##############################################
 def decode_ID4(packet):  		#NNAVDATA_GYROS_OFFSETS_TAG
 	dataset = struct.unpack_from("HHfff", packet, 0)
-	if dataset[1] != 16:		print ("*** Warning : navdata-gyros_offsets-Options-Package (ID=4) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 16:		print("*** Warning : navdata-gyros_offsets-Options-Package (ID=4) has the wrong size. ("+str(dataset[1])+")")
 	gyros_offsets = [0,0,0]
 	for i in range (0,3,1):		gyros_offsets[i]=dataset[i+2]	# offset_g[xyz]				in deg/s					(float)
 	return(gyros_offsets)
@@ -1529,7 +1548,7 @@ def decode_ID4(packet):  		#NNAVDATA_GYROS_OFFSETS_TAG
 ##### ID = 5 ### "euler_angles" ###############################################
 def decode_ID5(packet):			#NAVDATA_EULER_ANGLES_TAG
 	dataset = struct.unpack_from("HHff", packet, 0)
-	if dataset[1] != 12:		print ("*** Warning : navdata-euler_angles-Options-Package (ID=5) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 12:		print("*** Warning : navdata-euler_angles-Options-Package (ID=5) has the wrong size. ("+str(dataset[1])+")")
 	euler_angles = [0,0]
 	euler_angles[0] = dataset[2]	#float32   theta_a (head/back)
 	euler_angles[1] = dataset[3]	#float32   phi_a   (sides)
@@ -1538,7 +1557,7 @@ def decode_ID5(packet):			#NAVDATA_EULER_ANGLES_TAG
 ##### ID = 6 ### "references" #################################################
 def decode_ID6(packet):			#NAVDATA_REFERENCES_TAG
 	dataset = struct.unpack_from("HHiiiiiiiiffffffIfffffI", packet, 0)
-	if dataset[1] != 88:		print ("*** Warning : navdata-references-Options-Package (ID=6) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 88:		print("*** Warning : navdata-references-Options-Package (ID=6) has the wrong size. ("+str(dataset[1])+")")
 	references = [[0,0,0],[0,0],[0,0,0],[0.0,0.0],[0.0,0.0],[0.0,0.0],0,[0.0,0.0,0.0,0.0,0.0,0]]
 	references[0][0] = dataset[2]		#ref_theta  	Theta_ref_embedded [milli-deg]	(int32)
 	references[0][1] = dataset[3]		#ref_phi		Phi_ref_embedded [milli-deg]	(int32)
@@ -1566,7 +1585,7 @@ def decode_ID6(packet):			#NAVDATA_REFERENCES_TAG
 ##### ID = 7 ### "trims" ######################################################
 def decode_ID7(packet):			#NAVDATA_TRIMS_TAG
 	dataset = struct.unpack_from("HHfff", packet, 0)
-	if dataset[1] != 16:		print ("*** Warning : navdata-trims-Options-Package (ID=7) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 16:		print("*** Warning : navdata-trims-Options-Package (ID=7) has the wrong size. ("+str(dataset[1])+")")
 	trims = [0,0,0]
 	trims[0] = dataset[2]	#  angular_rates_trim									(float)
 	trims[1] = dataset[3]	#  euler_angles_trim_theta	[milli-deg]					(float)
@@ -1576,7 +1595,7 @@ def decode_ID7(packet):			#NAVDATA_TRIMS_TAG
 ##### ID = 8 ### "rc_references" ##############################################
 def decode_ID8(packet):			#NAVDATA_RC_REFERENCES_TAG
 	dataset = struct.unpack_from("HHiiiii", packet, 0)
-	if dataset[1] != 24:		print ("*** Warning : navdata-rc_references-Options-Package (ID=8) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 24:		print("*** Warning : navdata-rc_references-Options-Package (ID=8) has the wrong size. ("+str(dataset[1])+")")
 	rc_references = [0,0,0,0,0]
 	rc_references[0] = dataset[2]	#  rc_ref_pitch		Pitch_rc_embedded			(int32)
 	rc_references[1] = dataset[3]	#  rc_ref_roll		Roll_rc_embedded			(int32)
@@ -1589,8 +1608,8 @@ def decode_ID8(packet):			#NAVDATA_RC_REFERENCES_TAG
 def decode_ID9(packet):			#NAVDATA_PWM_TAG
 	dataset = struct.unpack_from("HHBBBBBBBBffffiiifiiifHHHHff", packet, 0)
 	if dataset[1] != 76 and dataset[1] != 92:   #92 since firmware 2.4.8 ?
-		print ("*** Warning : navdata-navdata_pwm-Options-Package (ID=9) has the wrong size. ("+str(dataset[1])+")")
-		#print "Soll: 76     Ist:",dataset[1]
+		print("*** Warning : navdata-navdata_pwm-Options-Package (ID=9) has the wrong size. ("+str(dataset[1])+")")
+		#print("Soll: 76     Ist:",dataset[1]
 	pwm = [[0,0,0,0],[0,0,0,0],0.0,0.0,0.0,0.0,[0,0,0],0.0,[0,0,0,0.0],[0,0,0,0],0.0,0.0]
 	for i in range(0,4,1):	pwm[0][i] = dataset[2+i]	#  motor1/2/3/4		[Pulse-width mod]	(uint8)
 	for i in range(0,4,1):	pwm[1][i] = dataset[6+i]	#  sat_motor1/2/3/4	[Pulse-width mod]	(uint8)
@@ -1615,7 +1634,7 @@ def decode_ID9(packet):			#NAVDATA_PWM_TAG
 ##### ID = 10 ### "altitude" ###################################################
 def decode_ID10(packet):		#NAVDATA_ALTITUDE_TAG
 	dataset = struct.unpack_from("HHifiiffiiiIffI", packet, 0)
-	if dataset[1] != 56:		print ("*** Warning : navdata-navdata_altitude-Options-Package (ID=10) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 56:		print("*** Warning : navdata-navdata_altitude-Options-Package (ID=10) has the wrong size. ("+str(dataset[1])+")")
 	altitude = [0,0.0,0,0,0.0,0.0,[0,0,0],0,[0,0],0]
 	altitude[0] = dataset[2]			# altitude_vision	[mm]					(int32)
 	altitude[1] = dataset[3]			# altitude_vz		[mm/s]					(float)
@@ -1634,7 +1653,7 @@ def decode_ID10(packet):		#NAVDATA_ALTITUDE_TAG
 ##### ID = 11 ### "vision_raw" #################################################
 def decode_ID11(packet):		#NAVDATA_VISION_RAW_TAG
 	dataset = struct.unpack_from("HHfff", packet, 0)
-	if dataset[1] != 16:	print ("*** Warning : navdata-vision_raw-Options-Package (ID=11) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 16:	print("*** Warning : navdata-vision_raw-Options-Package (ID=11) has the wrong size. ("+str(dataset[1])+")")
 	vision_raw = [0,0,0]
 	for i in range (0,3,1):		vision_raw[i] = dataset[2+i]	#  vision_tx_raw (xyz)				(float)
 	return(vision_raw)
@@ -1642,7 +1661,7 @@ def decode_ID11(packet):		#NAVDATA_VISION_RAW_TAG
 ##### ID = 12 ### "vision_of" #################################################
 def decode_ID12(packet):		#NAVDATA_VISION_OF_TAG
 	dataset = struct.unpack_from("HHffffffffff", packet, 0)
-	if dataset[1] != 44:	print ("*** Warning : navdata-vision_of-Options-Package (ID=12) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 44:	print("*** Warning : navdata-vision_of-Options-Package (ID=12) has the wrong size. ("+str(dataset[1])+")")
 	vision_of = [[0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0]]
 	for i in range (0,5,1):		vision_of[0][i] = dataset[2+i]	#  of_dx[5]							(float)
 	for i in range (0,5,1):		vision_of[1][i] = dataset[7+i]	#  of_dy[5]							(float)
@@ -1651,10 +1670,10 @@ def decode_ID12(packet):		#NAVDATA_VISION_OF_TAG
 ##### ID = 13 ### "vision" #####################################################
 def decode_ID13(packet):		#NAVDATA_VISION_TAG
 	dataset = struct.unpack_from("HHIiffffifffiIffffffIIff", packet, 0)
-	if dataset[1] != 92:	print ("*** Warning : navdata-vision-Options-Package (ID=13) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 92:	print("*** Warning : navdata-vision-Options-Package (ID=13) has the wrong size. ("+str(dataset[1])+")")
 	vision=[0,0,0.0,0.0,0.0,0.0,0,[0.0,0.0,0.0],0,0.0,[0.0,0.0,0.0],[0.0,0.0,0.0],0,0,[0.0,0.0]]
 	vision[0] = dataset[2]				# vision_state FIXME: What are the meanings of the tags ?
-	vision[1] = dataset[3]				# vision_misc							(int32)	
+	vision[1] = dataset[3]				# vision_misc							(int32)
 	vision[2] = dataset[4]				# vision_phi_trim						(float)
 	vision[3] = dataset[5]				# vision_phi_ref_prop					(float)
 	vision[4] = dataset[6]				# vision_theta_trim						(float)
@@ -1673,7 +1692,7 @@ def decode_ID13(packet):		#NAVDATA_VISION_TAG
 	for i in range (0,3,1):
 		vision[11][i] = dataset[17+i]	#  delta_phi/theta/psi					(float)
 	vision[12] =    dataset[20]			# gold_defined							(uint32)
-	vision[13] =    dataset[21]			# gold_reset							(uint32)	
+	vision[13] =    dataset[21]			# gold_reset							(uint32)
 	vision[14][0] = dataset[22]			# gold_x								(float)
 	vision[14][1] = dataset[23]			# gold_y								(float)
 	return(vision)
@@ -1681,7 +1700,7 @@ def decode_ID13(packet):		#NAVDATA_VISION_TAG
 ##### ID = 14 ### "vision_perf" ###############################################
 def decode_ID14(packet):		#NAVDATA_VISION_PERF_TAG
 	dataset = struct.unpack_from("HHffffffffffffffffffffffffff", packet, 0)
-	if dataset[1] != 108:		print ("*** Warning : navdata-vision_of-Options-Package (ID=14) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 108:		print("*** Warning : navdata-vision_of-Options-Package (ID=14) has the wrong size. ("+str(dataset[1])+")")
 	vision_perf=[0.0,0.0,0.0,0.0,0.0,0.0,[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]]
 	vision_perf[0] = dataset[2]				# time_szo								(float)
 	vision_perf[1] = dataset[3]				# time_corners							(float)
@@ -1696,7 +1715,7 @@ def decode_ID14(packet):		#NAVDATA_VISION_PERF_TAG
 ##### ID = 15 ### "trackers_send" #############################################
 def decode_ID15(packet):  		#NAVDATA_TRACKERS_SEND_TAG
 	dataset = struct.unpack_from("HHiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii", packet, 0)
-	if dataset[1] != 364:		print ("*** Warning : navdata-trackers_send-Options-Package (ID=15) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 364:		print("*** Warning : navdata-trackers_send-Options-Package (ID=15) has the wrong size. ("+str(dataset[1])+")")
 	DEFAULT_NB_TRACKERS_WIDTH  = 6
 	DEFAULT_NB_TRACKERS_HEIGHT = 5
 	limit = DEFAULT_NB_TRACKERS_WIDTH*DEFAULT_NB_TRACKERS_HEIGHT
@@ -1711,7 +1730,7 @@ def decode_ID15(packet):  		#NAVDATA_TRACKERS_SEND_TAG
 ##### ID = 16 ### "vision_detect" #############################################
 def decode_ID16(packet):  		#NAVDATA_VISION_DETECT_TAG
 	dataset = struct.unpack_from("HHIIIIIIIIIIIIIIIIIIIIIIIIIffffIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII", packet, offsetND)
-	if dataset[1] != 328:	print ("*** Warning : navdata-vision_detect-Package (ID=16) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 328:	print("*** Warning : navdata-vision_detect-Package (ID=16) has the wrong size. ("+str(dataset[1])+")")
 	vision_detect = [0,[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0],[0.0,0.0,0.0,0.0],[[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],[[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0]],[0,0,0,0]]
 	#Max marker detection in one picture: 4
 	vision_detect[0] = dataset[2]									 		# nb_detected						(uint32)
@@ -1732,14 +1751,14 @@ def decode_ID16(packet):  		#NAVDATA_VISION_DETECT_TAG
 ##### ID = 17 ### "watchdog" ###################################################
 def decode_ID17(packet):  		#NAVDATA_WATCHDOG_TAG
 	dataset = struct.unpack_from("HHI", packet, offsetND)
-	if dataset[1] != 8:	print ("*** Warning : navdata-watchdog-Package (ID=17) has the wrong size !!!")
+	if dataset[1] != 8:	print("*** Warning : navdata-watchdog-Package (ID=17) has the wrong size !!!")
 	watchdog = dataset[2]		# watchdog			Watchdog controll [-]				(uint32)
 	return(watchdog)
 
 ##### ID = 18 ### "adc_data_frame" #############################################
 def decode_ID18(packet):  		#NAVDATA_ADC_DATA_FRAME_TAG
 	dataset = struct.unpack_from("HHIBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB", packet, offsetND)
-	if dataset[1] != 40:	print ("*** Warning : navdata-adc_data_frame-Package (ID=18) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 40:	print("*** Warning : navdata-adc_data_frame-Package (ID=18) has the wrong size. ("+str(dataset[1])+")")
 	adc_data_frame = [0,[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
 	adc_data_frame[0] = dataset[2]									# version								(uint32)
 	for i in range (0,32,1):	adc_data_frame[1][i] = dataset[3+i]	# data_frame[32]						(uint8)
@@ -1748,7 +1767,7 @@ def decode_ID18(packet):  		#NAVDATA_ADC_DATA_FRAME_TAG
 ##### ID = 19 ### "video_stream" ###############################################
 def decode_ID19(packet):		#NAVDATA_VIDEO_STREAM_TAG
 	dataset = struct.unpack_from("HHBIIIIfIIIiiiiiII", packet, offsetND)
-	if dataset[1] != 65:	print ("*** Warning : navdata-video_stream-Package (ID=19) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 65:	print("*** Warning : navdata-video_stream-Package (ID=19) has the wrong size. ("+str(dataset[1])+")")
 	video_stream = [0,0,0,0,0,0.0,0,0,0,[0,0,0,0,0],0,0]
 	video_stream[0] = dataset[2]	# quant   		quantizer reference used to encode [1:31]   				(uint8)
 	video_stream[1] = dataset[3]	# frame_size	frame size in bytes   										(uint32)
@@ -1768,7 +1787,7 @@ def decode_ID19(packet):		#NAVDATA_VIDEO_STREAM_TAG
 ##### ID = 20 ### "games" ######################################################
 def decode_ID20(packet):  		#NAVDATA_GAMES_TAG
 	dataset = struct.unpack_from("HHII", packet, offsetND)
-	if dataset[1] != 12:	print ("*** Warning : navdata-games-Package (ID=20) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 12:	print("*** Warning : navdata-games-Package (ID=20) has the wrong size. ("+str(dataset[1])+")")
 	games = [0,0]
 	games[0] = dataset[2]	# double_tap_counter 			   							(uint32)
 	games[1] = dataset[3]	# finish_line_counter										(uint32)
@@ -1777,7 +1796,7 @@ def decode_ID20(packet):  		#NAVDATA_GAMES_TAG
 ##### ID = 21 ### "pressure_raw" ###############################################
 def decode_ID21(packet):  		#NAVDATA_PRESSURE_RAW_TAG
 	dataset = struct.unpack_from("HHihii", packet, offsetND)
-	if dataset[1] != 18:	print ("*** Warning : navdata-pressure_raw-Package (ID=21) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 18:	print("*** Warning : navdata-pressure_raw-Package (ID=21) has the wrong size. ("+str(dataset[1])+")")
 	pressure_raw = [0,0,0,0]
 	pressure_raw[0] = dataset[2]	# up 			   									(int32)
 	pressure_raw[1] = dataset[3]	# ut												(int16)
@@ -1788,7 +1807,7 @@ def decode_ID21(packet):  		#NAVDATA_PRESSURE_RAW_TAG
 ##### ID = 22 ### "magneto" ####################################################
 def decode_ID22(packet):		#NAVDATA_MAGNETO_TAG
 	dataset = struct.unpack_from("HHhhhffffffffffffBifff", packet, offsetND)
-	if dataset[1] != 83:	print ("*** Warning : navdata-magneto-Package (ID=22) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 83:	print("*** Warning : navdata-magneto-Package (ID=22) has the wrong size. ("+str(dataset[1])+")")
 	magneto = [[0,0,0],[0.0,0.0,0.0],[0.0,0.0,0.0],[0.0,0.0,0.0],0.0,0.0,0.0,0,0,0.0,0.0,0.0]
 	for i in range (0,3,1):		magneto[0][i]=dataset[2+i]	# mx/my/mz											(int16)
 	for i in range (0,3,1):		magneto[1][i]=dataset[5+i]	# magneto_raw		magneto in the body frame [mG]	(vector float)
@@ -1808,7 +1827,7 @@ def decode_ID22(packet):		#NAVDATA_MAGNETO_TAG
 def decode_ID23(packet):		#NAVDATA_WIND_TAG
 	dataset = struct.unpack_from("HHfffffffffffff", packet, offsetND)
 	if dataset[1] != 56 and dataset[1] != 64:
-		print ("*** Warning : navdata-wind_speed-Package (ID=23) has the wrong size. ("+str(dataset[1])+")")
+		print("*** Warning : navdata-wind_speed-Package (ID=23) has the wrong size. ("+str(dataset[1])+")")
 	wind_speed = [0.0,0.0,[0.0,0.0],[0.0,0.0,0.0,0.0,0.0,0.0],[0.0,0.0,0.0]]
 	wind_speed[0]    = dataset[2]							# wind_speed 			   					(float)
 	wind_speed[1]    = dataset[3]							# wind_angle								(float)
@@ -1821,7 +1840,7 @@ def decode_ID23(packet):		#NAVDATA_WIND_TAG
 ##### ID = 24 ### "kalman_pressure" ###########################################
 def decode_ID24(packet):  		#NAVDATA_KALMAN_PRESSURE_TAG
 	dataset = struct.unpack_from("HHffffffffff?f?ff??", packet, offsetND)
-	if dataset[1] != 72:	print ("*** Warning : navdata-wind_speed-Package (ID=24) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 72:	print("*** Warning : navdata-wind_speed-Package (ID=24) has the wrong size. ("+str(dataset[1])+")" )
 	kalman_pressure = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0,0.0,False,0.0,0.0,False,False]
 	kalman_pressure[ 0] = dataset[2]	# offset_pressure 			   					(float)
 	kalman_pressure[ 1] = dataset[3]	# est_z											(float)
@@ -1845,7 +1864,7 @@ def decode_ID24(packet):  		#NAVDATA_KALMAN_PRESSURE_TAG
 ##### ID = 25 ### "hdvideo_stream" ############################################
 def decode_ID25(packet):		#NAVDATA_HDVIDEO-TAG
 	dataset = struct.unpack_from("HHfffffff", packet, offsetND)
-	if dataset[1] != 32:	print ("*** Warning : navdata-hdvideo_stream-Package (ID=25) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 32:	print("*** Warning : navdata-hdvideo_stream-Package (ID=25) has the wrong size. ("+str(dataset[1])+")")
 	hdvideo_stream = [0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 	hdvideo_stream[0] = dataset[2]	# hdvideo_state 			   					(float)
 	hdvideo_stream[1] = dataset[3]	# storage_fifo_nb_packets						(float)
@@ -1859,7 +1878,7 @@ def decode_ID25(packet):		#NAVDATA_HDVIDEO-TAG
 ##### ID = 26 ### "wifi" ######################################################
 def decode_ID26(packet):		#NAVDATA_WIFI_TAG
 	dataset = struct.unpack_from("HHI", packet, offsetND)
-	if dataset[1] != 8:	print ("*** Warning : navdata-wifi-Package (ID=26) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 8:	print("*** Warning : navdata-wifi-Package (ID=26) has the wrong size. ("+str(dataset[1])+")")
 	wifi = dataset[2]	# link_quality 			   								(uint32)
 	return(wifi)
 
@@ -1867,7 +1886,7 @@ def decode_ID26(packet):		#NAVDATA_WIFI_TAG
 def decode_ID27(packet):  #NAVDATA_ZIMU_3000_TAG
 #	dataset = struct.unpack_from("HHif", packet, offsetND)
 #	if dataset[1] != 12 and dataset[1] != 216:		# 216 since firmware 2.4.8 ?
-#		print "*** Warning : navdata-zimmu_3000-Package (ID=27) has the wrong size. ("+str(dataset[1])+")"
+#		print ("*** Warning : navdata-zimmu_3000-Package (ID=27) has the wrong size. ("+str(dataset[1])+")")
 #	zimmu_3000 = [0,0.0]
 #	zimmu_3000[0] = dataset[2]	# vzimmuLSB 			   							(int32)
 #	zimmu_3000[1] = dataset[3]	# vzfind 			   								(float)
@@ -1882,12 +1901,11 @@ def decode_ID27(packet):  #NAVDATA_ZIMU_3000_TAG
 		gps[1]	= dataset[12]
 		gps[2]	= dataset[13]
 	return(gps)
-	
 
 ##### Footer ### "chksum" #####################################################
 def decode_Footer(packet,allpacket):   ### Decode Checksum options-package ID=65535
 	dataset = struct.unpack_from("HHI", packet, offsetND)
-	if dataset[1] != 8:	print ("*** Warning : Checksum-Options-Package (ID=65535) has the wrong size. ("+str(dataset[1])+")")
+	if dataset[1] != 8:	print("*** Warning : Checksum-Options-Package (ID=65535) has the wrong size. ("+str(dataset[1])+")")
 	chksum = 	[0,False]
 	chksum[0] = dataset[2]
 	sum, plen =	0, len(allpacket)-8
@@ -1905,7 +1923,7 @@ def getDroneStatus(packet):
 	length =	len(packet)
 	dataset = 	struct.unpack_from("IIII", packet, 0)	# Reading (Header, State, Sequence, Vision)
 	offsetND =	struct.calcsize("IIII")
-	
+
 ###############################=-
 ###	Decode Options-Packages ###=-
 ###############################=-
@@ -1952,10 +1970,14 @@ def getNavdata(packet,choice):
 	return(navdata)
 
 ###############################=-
-###	Threads					###=- 
+###	Threads					###=-
 ###############################=-
 def reconnect(navdata_pipe, commitsuicideND, DroneIP,NavDataPort):
-	if not commitsuicideND:		navdata_pipe.sendto(str.encode("\x01\x00\x00\x00"), (DroneIP, NavDataPort))
+    if not commitsuicideND:
+        _msg = "\x01\x00\x00\x00"
+        _msg = _msg.encode()
+        navdata_pipe.sendto(_msg, (DroneIP, NavDataPort))
+
 
 def watchdogND(parentPID):
 	global commitsuicideND
@@ -1988,7 +2010,7 @@ def mainloopND(DroneIP,NavDataPort,parent_pipe,parentPID):
 	navdata_pipe.setblocking(0)
 	navdata_pipe.bind(('', NavDataPort))
 	pipes.append(navdata_pipe)
-	
+
 	# start connection
 	reconnect(navdata_pipe, commitsuicideND, DroneIP, NavDataPort)
 	netHeartbeat = threading.Timer(2.0, reconnect, [navdata_pipe,commitsuicideND,DroneIP,NavDataPort,])	# Inits the first Network-Heartbeat (2 secs after disconnection the drone stops sending)
@@ -1998,16 +2020,16 @@ def mainloopND(DroneIP,NavDataPort,parent_pipe,parentPID):
 
 	while not commitsuicideND:
 		in_pipe, out_pipe, dummy2 = select.select(pipes, [], [], 0.5)		# When something is in a pipe...
-		for ip in in_pipe:	
+		for ip in in_pipe:
 			if ip == parent_pipe:
 				cmd = parent_pipe.recv()
-				if showCommands:		print ("** Com -> Nav : ",cmd)
+				if showCommands:		print("** Com -> Nav : ",cmd ,end =" ")
 				# Signal to stop this process and all its threads
 				if cmd == "die!":				commitsuicideND = True
 				# Enables/disables Debug-bit
 				elif cmd == "debug":
 					debug = True
-					print ("NavData-Process :    running")
+					print("NavData-Process :    running")
 				elif cmd == "undebug":
 					debug = False
 				# Enables/disables Debug-bit
@@ -2063,12 +2085,12 @@ def mainloopND(DroneIP,NavDataPort,parent_pipe,parentPID):
 				except IOError:	pass
 	suicideND = True
 	netHeartbeat.cancel()
-	if debug:	print ("NavData-Process :    committed suicide")
+	if debug:	print("NavData-Process :    committed suicide")
 	# TestMe
 	try:	navdata_pipe.close()
 	except:	pass
-	
-	
+
+
 ##################################################################################################
 ###### Playground																			######
 ##################################################################################################
@@ -2080,20 +2102,20 @@ if __name__ == "__main__":
 	import time
 	import ps_drone
 
-	drone = ps_drone.Drone()								# Start using drone					
+	drone = ps_drone.Drone()								# Start using drone
 	drone.printBlue("Battery: ")
 
 	drone.startup()											# Connects to drone and starts subprocesses
 	drone.reset()											# Always good, at start
 
 	while drone.getBattery()[0] == -1:	time.sleep(0.1)		# Waits until the drone has done its reset
-	time.sleep(0.5)											# Give it some time to fully awake 
+	time.sleep(0.5)											# Give it some time to fully awake
 
 	drone.printBlue("Battery: "+str(drone.getBattery()[0])+"%  "+str(drone.getBattery()[1]))	# Gives a battery-status
-	
+
 	stop = False
 	while not stop:
-		key = " " #drone.getKey()
+		key = drone.getKey()
 		if key == " ":
 			if drone.NavData["demo"][0][2] and not drone.NavData["demo"][0][3]:	drone.takeoff()
 			else:																drone.land()
@@ -2117,4 +2139,4 @@ if __name__ == "__main__":
 		elif key == "-":	drone.doggyWag()
 		elif key != "":		stop = True
 
-	print ("Batterie: "+str(drone.getBattery()[0])+"%  "+str(drone.getBattery()[1]))	# Gives a battery-status
+	print("Batterie: "+str(drone.getBattery()[0])+"%  "+str(drone.getBattery()[1]))	# Gives a battery-status

@@ -28,8 +28,8 @@ drone.useDemoMode(True)											# Just give me 15 basic dataset per second (is
 
 ##### Mainprogram begin #####
 drone.setConfigAllID()				# Go to multiconfiguration-mode
-drone.sdVideo()						# Choose lower resolution (hdVideo() for...well, guess it)
-drone.groundCam()					# Choose front view
+drone.hdVideo()						# Choose lower resolution (hdVideo() for...well, guess it)
+drone.frontCam()					# Choose front view
 CDC = drone.ConfigDataCount
 while CDC == drone.ConfigDataCount:	time.sleep(0.0001)	# Wait until it is done (after resync is done)
 drone.startVideo()					# Start video-function
@@ -40,9 +40,9 @@ stop =	 False
 while not stop:
 	while drone.VideoImageCount==IMC: time.sleep(0.01)	# Wait until the next video-frame
 	IMC = drone.VideoImageCount
-	key = drone.getKey()
-	if key:		stop = True
+	#key = drone.getKey()
+	#if key:		stop = True
 	img  = drone.VideoImage					# Copy video-image
-	pImg = cv2.resize(img,(400,100))		# Process video-image
+	pImg = cv2.resize(img,(1920,1080))		# Process video-image
 	cv2.imshow('Drones video',pImg)			# Show processed video-image
 	cv2.waitKey(1)							# OpenCV for Linux has a bug and needs this line
