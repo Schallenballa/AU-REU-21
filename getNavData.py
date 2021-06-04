@@ -13,6 +13,8 @@
 ##### Suggested clean drone startup sequence #####
 import time, sys
 import ps_drone                                                               # Import PS-Drone-API
+from pynput import keyboard
+
 
 drone = ps_drone.Drone()                                                      # Start using drone					
 drone.startup()                                                               # Connects to drone and starts subprocesses
@@ -25,9 +27,18 @@ drone.getNDpackage(["demo","pressure_raw","altitude","magneto","wifi"])       # 
 time.sleep(1)                                                               # Give it some time to awake fully after reset
 
 ##### Mainprogram begin #####
+end = False
+
+def on_press(key):
+    global end
+    end = True
+    return False
+
+listener = keyboard.Listener(on_press=on_press)
+listener.start()
+
 NDC = drone.NavDataCount
-start = time.monotonic() #end = False
-while time.monotonic() < start + : #not end:    
+while not end:    
     while drone.NavDataCount == NDC:  time.sleep(0.001)                       # Wait until next time-unit
     #if drone.getKey():                end = True                              # Stop if any key is pressed
     NDC=drone.NavDataCount
