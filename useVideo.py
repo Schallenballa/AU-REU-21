@@ -12,6 +12,8 @@
 ###########
 
 ##### Suggested clean drone startup sequence #####
+
+##If you run into a video error, run '$ sudo apt-get install python-opencv' to reinstall python-opencv-package
 import time, sys
 import ps_drone													# Import PS-Drone-API
 import cv2														# Import OpenCV
