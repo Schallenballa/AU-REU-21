@@ -2,6 +2,13 @@ import time, sys
 import ps_drone                                                               # Import PS-Drone-API
 
 
+def time_convert(sec):
+  mins = sec // 60
+  sec = sec % 60
+  hours = mins // 60
+  mins = mins % 60
+  print("Time Lapsed = {0}:{1}:{2}".format(int(hours),int(mins),sec))
+
 drone = ps_drone.Drone()                                                      # Start using drone
 drone.startup()
 
@@ -17,7 +24,8 @@ time.sleep(1)                                                               # Gi
 NDC = drone.NavDataCount
 prevWifi = drone.NavData["wifi"]
 while True:
-    while drone.NavDataCount == NDC:  time.sleep(0.001)                       # Wait until next time-unit
+    while drone.NavDataCount == NDC:  time.sleep(0.001)
+    start_time = time.time()                   # Wait until next time-unit
     while (drone.NavData["wifi"]==prevBatt):	time.sleep(0.1)	# Sleeps until battery percentage diminishes
     end_time = time.time()
     time_lapsed = end_time - start_time
@@ -26,5 +34,5 @@ while True:
     NDC=drone.NavDataCount
     print ("Wifi link quality:            "+str(drone.NavData["wifi"]))
     prevWifi=drone.NavData["wifi"]
-    
+
 drone.shutdown()
