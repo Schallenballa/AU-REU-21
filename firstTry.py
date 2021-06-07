@@ -25,7 +25,7 @@ time.sleep(0.5)
 print("Taking off")
 drone.takeoff()                # Drone starts
 print("Sleeping")
-time.sleep(7.5)                # Gives the drone time to start
+time.sleep(5)                # Gives the drone time to start
 
 # drone.moveForward()            # Drone flies forward...
 # time.sleep(2)                  # ... for two seconds

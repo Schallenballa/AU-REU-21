@@ -192,6 +192,7 @@ class Drone(object):
 		try:			self.__threadReceiveData.join()
 		except:			pass
 		self.__keepalive.cancel()
+		print("Exited smoothly")
 		sys.exit()
 
 ##############################################################=-

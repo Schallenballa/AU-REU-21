@@ -25,11 +25,11 @@ NDC = drone.NavDataCount
 prevWifi = drone.NavData["wifi"]
 while True:
     while drone.NavDataCount == NDC:  time.sleep(0.001)
-    start_time = time.time()                   # Wait until next time-unit
+    #start_time = time.time()                   # Wait until next time-unit
     while (drone.NavData["wifi"]==prevWifi):	time.sleep(0.1)	# Sleeps until battery percentage diminishes
-    end_time = time.time()
-    time_lapsed = end_time - start_time
-    time_convert(time_lapsed)
+    #end_time = time.time()
+    #time_lapsed = end_time - start_time
+    #time_convert(time_lapsed)
     #if drone.getKey():                end = True                              # Stop if any key is pressed
     NDC=drone.NavDataCount
     print ("Wifi link quality:            "+str(drone.NavData["wifi"]))

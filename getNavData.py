@@ -13,7 +13,9 @@
 ##### Suggested clean drone startup sequence #####
 import time, sys
 import ps_drone                                                               # Import PS-Drone-API
-from pynput import keyboard
+#from pynput import keyboard
+import signal
+import sys
 
 
 drone = ps_drone.Drone()                                                      # Start using drone					
@@ -28,14 +30,20 @@ time.sleep(1)                                                               # Gi
 
 ##### Mainprogram begin #####
 end = False
+# 
+# def on_press(key):
+#     global end
+#     end = True
+#     return False
+# 
+# listener = keyboard.Listener(on_press=on_press)
+# listener.start()
 
-def on_press(key):
-    global end
-    end = True
-    return False
+def exit_gracefully(signal, frame):
+    print("Exiting")
+    drone.shutdown()
 
-listener = keyboard.Listener(on_press=on_press)
-listener.start()
+signal.signal(signal.SIGQUIT, exit_gracefully)
 
 NDC = drone.NavDataCount
 while not end:    
