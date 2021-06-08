@@ -11,11 +11,11 @@
 ###########
 
 ##### Suggested clean drone startup sequence #####
-import time, sys
+import time
+import sys
 import ps_drone                                                               # Import PS-Drone-API
 #from pynput import keyboard
 import signal
-import sys
 
 
 drone = ps_drone.Drone()                                                      # Start using drone					
