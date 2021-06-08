@@ -12,7 +12,7 @@ detector = apriltag("tagStandard41h12")
 while cv2.waitKey(1) != 0x1b:
     ret, img = camera.read()
     image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    detections = detector.detect(image)
+    #detections = detector.detect(image)
     #for det in detections:
     #        if det["margin"] >= 10:
     #           rect = det["lb-rb-rt-lt"].astype(int).reshape((-1, 1, 2))
