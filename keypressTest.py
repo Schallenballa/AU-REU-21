@@ -22,7 +22,7 @@ def on_press(key):
     except AttributeError:
         print('special key {0} pressed'.format(
             key))
-        return False
+        return True
 
 def on_release(key):
     print('{0} released'.format(
@@ -32,8 +32,7 @@ def on_release(key):
         return False
 
 # Collect all event until released
-listener = keyboard.Listener(
-    on_press=on_press)
+listener = keyboard.Listener(on_press=on_press, on_release=on_release)
 listener.start()
 
 print("Done")

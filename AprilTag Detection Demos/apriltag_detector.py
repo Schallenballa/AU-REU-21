@@ -17,4 +17,4 @@ detector = apriltag("tagStandard41h12")
 
 detections = detector.detect(image)
 
-print(detections)
+print(detections, "\n", Image(imagepath).size())

@@ -39,8 +39,8 @@ end = False
 # listener = keyboard.Listener(on_press=on_press)
 # listener.start()
 
-def exit_gracefully(signal, frame):
-    print("Exiting")
+def shutdown_gracefully(signal, frame):
+    print("Shutting down")
     drone.shutdown()
 
 signal.signal(signal.SIGQUIT, exit_gracefully)
