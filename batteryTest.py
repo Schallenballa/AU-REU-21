@@ -1,9 +1,14 @@
 #This program is designed to test the stability of the battery of the Raspberry Pi & the AR.Drone 2.0's output USB connection
 
-import time, sys
+import time, sys, signal
 import ps_drone													# Import PS-Drone-API
 import cv2
 
+def exit_gracefully(signal, frame):
+    print("Shutting down")
+    drone.shutdown()
+
+signal.signal(signal.SIGQUIT, exit_gracefully)
 
 def time_convert(sec):
   mins = sec // 60

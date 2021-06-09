@@ -19,7 +19,7 @@ while cv2.waitKey(1) != 0x1b:
            pos = det["center"].astype(int) + (-10, 10)
            cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
     cv2.imshow("IMG", img)
-    print(detections)
+    print(detections, "\n(Rows, Columns):", image.shape, "\nTotal Pixels:", image.size)
     
 cv2.destroyAllWindows()
 

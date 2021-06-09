@@ -53,9 +53,6 @@ time.sleep(2)
 # drone.stop()                   # Drone stops
 # time.sleep(2)
 
-drone.turnAngle(-90.0, 1)
-time.sleep(20)
-
 print("Landing")
 drone.shutdown()                   # Drone lands
 print("Done")
