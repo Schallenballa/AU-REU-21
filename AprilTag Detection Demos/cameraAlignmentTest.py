@@ -4,6 +4,7 @@ from apriltag import apriltag
 
 COLOR1 = 112, 132, 58 #BGR
 COLOR2 = 0, 0, 255 #BGR
+COLOR3 = 240, 105, 0 #BGR
 MAXWIDTH = 640
 MAXHEIGHT = 480
 camera = cv2.VideoCapture(0)
@@ -32,6 +33,7 @@ def arrayLines():
         RB = [0, 0]
         RT = [0, 0]
         LT = [0, 0]
+        CNT = [0, 0]
         
         #Creates the variables which indicate a detection
         detections = detector.detect(image)
@@ -46,6 +48,7 @@ def arrayLines():
                    RB = det["lb-rb-rt-lt"][1]
                    RT = det["lb-rb-rt-lt"][2]
                    LT = det["lb-rb-rt-lt"][3]
+                   CNT = det["center"].astype(int)
                    
         
         #Loops through some math to create the COORDINATES[][] array to store the 4 vertices and boolean of whether or not a detection point is closeby
@@ -74,10 +77,7 @@ def arrayLines():
         xCOUNT = 0
         for x in range(8):
             for y in range(8):
-                #rect2 = np.array([COORDINATES[xCOUNT], COORDINATES[xCOUNT+9], COORDINATES[xCOUNT+10], COORDINATES[xCOUNT+1]], np.int32)
                 rect = np.array([[COORDINATES[xCOUNT][0],COORDINATES[xCOUNT][1]], [COORDINATES[xCOUNT+9][0], COORDINATES[xCOUNT+9][1]], [COORDINATES[xCOUNT+10][0], COORDINATES[xCOUNT+10][1]], [COORDINATES[xCOUNT+1][0], COORDINATES[xCOUNT+1][1]]], np.int32)
-                #print(rect)
-                #print(rect2)
                 if (COORDINATES[xCOUNT][2] == 1):
                     cv2.polylines(img, [rect], True, COLOR2, 2)
                 elif (COORDINATES[xCOUNT+9][2] == 1):
@@ -91,7 +91,9 @@ def arrayLines():
                 xCOUNT = xCOUNT + 1
             xCOUNT = xCOUNT + 1
 
-
+        if CNT[0] != 0:
+            line = np.array([(320,240), CNT], np.int32)
+            cv2.polylines(img, [line], False, COLOR3, 3)
         cv2.imshow("IMG", img)
     cv2.destroyAllWindows()
 
