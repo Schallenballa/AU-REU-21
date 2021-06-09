@@ -1,17 +1,17 @@
-import cv2
+#import cv2
 import numpy as np
-from apriltag import apriltag
+#from apriltag import apriltag
 
 COLOR1 = 112, 132, 58 #BGR
 COLOR2 = 0, 0, 255 #BGR
 MAXWIDTH = 640
 MAXHEIGHT = 480
-camera = cv2.VideoCapture(0)
+#camera = cv2.VideoCapture(0)
 #The picture is 640 x 480
 #CENTER = (320, 240)
 #The AprilTag detects widthxheight
-camera2 = camera
-detector = apriltag("tagStandard41h12")
+#camera2 = camera
+#detector = apriltag("tagStandard41h12")
 
 
 
@@ -22,33 +22,39 @@ def arrayLines():
     HEIGHT = 48
     COORDINATES = []
     COUNT = 0
+    PRIMED = False
     for x in range(9):
         #print("WIDTH: "+str(WIDTH))
         for y in range(9):
-            COORDINATES.append([WIDTH,HEIGHT])
+            COORDINATES.append([WIDTH,HEIGHT,PRIMED])
             #print("HEIGHT: "+str(HEIGHT))
             HEIGHT = HEIGHT + 48
             print("Index: "+str(COUNT)+" Coordinates: "+str(COORDINATES[COUNT]))
+            #print("WIDTH: "+str(COORDINATES[1,2]))
             COUNT = COUNT + 1
         WIDTH = WIDTH + 64
         HEIGHT = 48
 
-
-    while cv2.waitKey(1) != 0x1b:
-        ret, img = camera.read()
-        image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        cv2.imshow("IMG", img)
-
+    print(COORDINATES)
+    print(COORDINATES[1][1])
 
     xCOUNT = 0
-    for x in range(9):
-        for y in range(9):
-            rect = np.array([COORDINATES[xCOUNT], COORDINATES[xCOUNT+1], COORDINATES[xCOUNT+2], COORDINATES[xCOUNT+3]], np.int32)
-            cv2.polylines(img, [rect], True, COLOR2, 1)
-        xCOUNT = xCOUNT + 4
+    for x in range(8):
+        for y in range(8):
+            rect = np.array([COORDINATES[xCOUNT], COORDINATES[xCOUNT+9], COORDINATES[xCOUNT+10], COORDINATES[xCOUNT+1]], np.int32)
+            rect2 = np.array([[COORDINATES[xCOUNT][0],COORDINATES[xCOUNT][1]], [COORDINATES[xCOUNT+9][0], COORDINATES[xCOUNT+9][1]], [COORDINATES[xCOUNT+10][0], COORDINATES[xCOUNT+10][1]], [COORDINATES[xCOUNT+1][0], COORDINATES[xCOUNT+1][1]]], np.int32)
+            print(rect)
+            print(rect2)
+    #        cv2.polylines(img, [rect], True, COLOR2, 1)
+            xCOUNT = xCOUNT + 1
+        xCOUNT = xCOUNT + 1
 
+    #while cv2.waitKey(1) != 0x1b:
+    #    ret, img = camera.read()
+    #    image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #    cv2.imshow("IMG", img)
 
-    cv2.destroyAllWindows()
+    #cv2.destroyAllWindows()
 
 
 
