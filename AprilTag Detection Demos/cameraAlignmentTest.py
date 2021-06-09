@@ -1,63 +1,102 @@
-#import cv2
+import cv2
 import numpy as np
-#from apriltag import apriltag
+from apriltag import apriltag
 
 COLOR1 = 112, 132, 58 #BGR
 COLOR2 = 0, 0, 255 #BGR
 MAXWIDTH = 640
 MAXHEIGHT = 480
-#camera = cv2.VideoCapture(0)
+camera = cv2.VideoCapture(0)
 #The picture is 640 x 480
 #CENTER = (320, 240)
 #The AprilTag detects widthxheight
-#camera2 = camera
-#detector = apriltag("tagStandard41h12")
+camera2 = camera
+detector = apriltag("tagStandard41h12")
 
 
 
 
 
 def arrayLines():
-    WIDTH = 64
-    HEIGHT = 48
-    COORDINATES = []
-    COUNT = 0
-    PRIMED = False
-    for x in range(9):
-        #print("WIDTH: "+str(WIDTH))
-        for y in range(9):
-            COORDINATES.append([WIDTH,HEIGHT,PRIMED])
-            #print("HEIGHT: "+str(HEIGHT))
-            HEIGHT = HEIGHT + 48
-            print("Index: "+str(COUNT)+" Coordinates: "+str(COORDINATES[COUNT]))
-            #print("WIDTH: "+str(COORDINATES[1,2]))
-            COUNT = COUNT + 1
-        WIDTH = WIDTH + 64
+    while cv2.waitKey(1) != 0x1b:
+        ret, img = camera.read()
+        image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        #Defines initial values of variables
+        WIDTH = 64
         HEIGHT = 48
+        COORDINATES = []
+        COUNT = 0
+        PRIMED = False
+        LB = [0, 0]
+        RB = [0, 0]
+        RT = [0, 0]
+        LT = [0, 0]
+        
+        #Creates the variables which indicate a detection
+        detections = detector.detect(image)
+        for det in detections:
+                if det["margin"] >= 10:
+                   rect = det["lb-rb-rt-lt"].astype(int).reshape((-1, 1, 2))
+                   cv2.polylines(img, [rect], True, COLOR1, 4)
+                   ident = str(det["id"])
+                   pos = det["center"].astype(int) + (-10, 10)
+                   cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR1, 2)
+                   LB = det["lb-rb-rt-lt"][0]
+                   RB = det["lb-rb-rt-lt"][1]
+                   RT = det["lb-rb-rt-lt"][2]
+                   LT = det["lb-rb-rt-lt"][3]
+                   
+        
+        #Loops through some math to create the COORDINATES[][] array to store the 4 vertices and boolean of whether or not a detection point is closeby
+        for x in range(9):
+            for y in range(9):
+                HEIGHTCHECK1 = HEIGHT - 25
+                HEIGHTCHECK2 = HEIGHT + 25
+                WIDTHCHECK1 = WIDTH - 25
+                WIDTHCHECK2 = WIDTH + 25
+                if (HEIGHTCHECK1 < int(LB[1])) and (HEIGHTCHECK2 > int(LB[1])) and (WIDTHCHECK1 < int(LB[0])) and (WIDTHCHECK2 > int(LB[0])):
+                    PRIMED = True
+                elif (HEIGHTCHECK1 < int(RB[1])) and (HEIGHTCHECK2 > int(RB[1])) and (WIDTHCHECK1 < int(RB[0])) and (WIDTHCHECK2 > int(RB[0])):
+                    PRIMED = True
+                elif (HEIGHTCHECK1 < int(RT[1])) and (HEIGHTCHECK2 > int(RT[1])) and (WIDTHCHECK1 < int(RT[0])) and (WIDTHCHECK2 > int(RT[0])):
+                    PRIMED = True
+                elif (HEIGHTCHECK1 < int(LT[1])) and (HEIGHTCHECK2 > int(LT[1])) and (WIDTHCHECK1 < int(LT[0])) and (WIDTHCHECK2 > int(LT[0])):
+                    PRIMED = True
+                COORDINATES.append([WIDTH,HEIGHT,PRIMED])
+                HEIGHT = HEIGHT + 48
+                COUNT = COUNT + 1
+                PRIMED = False
+            WIDTH = WIDTH + 64
+            HEIGHT = 48
 
-    print(COORDINATES)
-    print(COORDINATES[1][1])
-
-    xCOUNT = 0
-    for x in range(8):
-        for y in range(8):
-            rect = np.array([COORDINATES[xCOUNT], COORDINATES[xCOUNT+9], COORDINATES[xCOUNT+10], COORDINATES[xCOUNT+1]], np.int32)
-            rect2 = np.array([[COORDINATES[xCOUNT][0],COORDINATES[xCOUNT][1]], [COORDINATES[xCOUNT+9][0], COORDINATES[xCOUNT+9][1]], [COORDINATES[xCOUNT+10][0], COORDINATES[xCOUNT+10][1]], [COORDINATES[xCOUNT+1][0], COORDINATES[xCOUNT+1][1]]], np.int32)
-            print(rect)
-            print(rect2)
-    #        cv2.polylines(img, [rect], True, COLOR2, 1)
+        #Runs a loop to generate all of the rectangles and assigns the color based on detection of fiducial corner
+        xCOUNT = 0
+        for x in range(8):
+            for y in range(8):
+                #rect2 = np.array([COORDINATES[xCOUNT], COORDINATES[xCOUNT+9], COORDINATES[xCOUNT+10], COORDINATES[xCOUNT+1]], np.int32)
+                rect = np.array([[COORDINATES[xCOUNT][0],COORDINATES[xCOUNT][1]], [COORDINATES[xCOUNT+9][0], COORDINATES[xCOUNT+9][1]], [COORDINATES[xCOUNT+10][0], COORDINATES[xCOUNT+10][1]], [COORDINATES[xCOUNT+1][0], COORDINATES[xCOUNT+1][1]]], np.int32)
+                #print(rect)
+                #print(rect2)
+                if (COORDINATES[xCOUNT][2] == 1):
+                    cv2.polylines(img, [rect], True, COLOR2, 2)
+                elif (COORDINATES[xCOUNT+9][2] == 1):
+                    cv2.polylines(img, [rect], True, COLOR2, 2)
+                elif (COORDINATES[xCOUNT+10][2] == 1):
+                    cv2.polylines(img, [rect], True, COLOR2, 2)
+                elif (COORDINATES[xCOUNT+1][2] == 1):
+                    cv2.polylines(img, [rect], True, COLOR2, 2)
+                else:
+                    cv2.polylines(img, [rect], True, COLOR1, 1)
+                xCOUNT = xCOUNT + 1
             xCOUNT = xCOUNT + 1
-        xCOUNT = xCOUNT + 1
-
-    #while cv2.waitKey(1) != 0x1b:
-    #    ret, img = camera.read()
-    #    image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    #    cv2.imshow("IMG", img)
-
-    #cv2.destroyAllWindows()
 
 
+        cv2.imshow("IMG", img)
+    cv2.destroyAllWindows()
 
+
+#Old function which will hardcode all of the lines over the display
 def hardCodedLines():
     while cv2.waitKey(1) != 0x1b:
         ret, img = camera.read()
