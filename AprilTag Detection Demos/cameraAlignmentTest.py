@@ -7,7 +7,7 @@ COLOR2 = 0, 0, 255 #BGR
 COLOR3 = 240, 105, 0 #BGR
 MAXWIDTH = 640
 MAXHEIGHT = 480
-camera = cv2.VideoCapture(0)
+camera = cv2.VideoCapture(-1)
 #The picture is 640 x 480
 #CENTER = (320, 240)
 #The AprilTag detects widthxheight
@@ -43,7 +43,7 @@ def arrayLines():
                    cv2.polylines(img, [rect], True, COLOR1, 4)
                    ident = str(det["id"])
                    pos = det["center"].astype(int) + (-10, 10)
-                   cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR1, 2)
+                   cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, COLOR2, 2)
                    LB = det["lb-rb-rt-lt"][0]
                    RB = det["lb-rb-rt-lt"][1]
                    RT = det["lb-rb-rt-lt"][2]
