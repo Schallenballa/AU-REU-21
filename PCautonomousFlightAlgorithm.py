@@ -47,7 +47,7 @@ while (timeAllotted > time.time()):
         else:
             os.system('clear')
             time_convert(time.time())
-            print("Magnetometer (micro-Teslas)): X=%0.3f Y=%0.3f Z=%0.3f"%int(mag.magnetic))
+            print("Magnetometer (micro-Teslas)): X=%0.3f Y=%0.3f Z=%0.3f"%mag.magnetic)
 print("While loop has concluded")
 finish = time.time()
 time_convert(finish - start_time)
