@@ -28,7 +28,7 @@ def time_convert(sec):
 detectAprilTag = False
 poseThreshold = 10000000
 start_time = time.time()
-timeAllotted = start_time + 20
+timeAllotted = start_time + 30
 while (timeAllotted > time.time()):
     #print("Drone is moving forward...")
     current_time = int(time.time())
@@ -47,7 +47,8 @@ while (timeAllotted > time.time()):
         else:
             os.system('clear')
             time_convert(time.time())
-            print("Magnetometer (micro-Teslas)): X=%0.3f Y=%0.3f Z=%0.3f"%mag.magnetic)
+            print("Magnetometer (micro-Teslas)): X=%i Y=%i Z=%i"%(int(mag.magnetic[0]),int(mag.magnetic[1]),int(mag.magnetic[2])))
+            print("Accelerometer (m/s^2): X=%0.3f Y=%0.3f Z=%0.3f"%(accel.acceleration[0],accel.acceleration[1],accel.acceleration[2]))
 print("While loop has concluded")
 finish = time.time()
 time_convert(finish - start_time)
