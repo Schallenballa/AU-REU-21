@@ -32,21 +32,33 @@ y1 = []
 yCounter = 0
 
 def determineResult():
-    global x2
-    netTotal = 0
+    yCounter = 0
+    with open(os.path.join(repository_dir, 'temp.txt'),'r') as file:
+        line=file.readline()
+        for line in file:
+            xTemp = line.split(',')
+            x1.append(xTemp[0])
+            x2.append(int(xTemp[1]))
+            x3.append(xTemp[2])
+            y1.append(yCounter)
+            yCounter += 1
+    print(x2)
+    netTotal = 0.0
     print("Calculating result...")
     time.sleep(3)
     for value in x2:
-        netTotal += value
+        netTotal = netTotal + float(value)
     if (netTotal > 0):
         print("The y-axis is net-positive")
     elif (netTotal == 0):
         print("The y-axis is net-zero")
     else:
         print("The y-axis is net-negative")
-    print("netTotal: "+netTotal)
+    print("netTotal: "+str(netTotal))
+    exit()
 
 def shutdown_gracefully(signal, frame):
+    file.close()
     determineResult()
 
 signal.signal(signal.SIGQUIT, shutdown_gracefully)
@@ -64,9 +76,9 @@ with open(os.path.join(repository_dir, 'temp.txt'),'a') as file:
         #print("Accelerometer (m/s^2): X=%0.3f Y=%0.3f Z=%0.3f"%(accel.acceleration[0],accel.acceleration[1],accel.acceleration[2]))
         #file.write("Magnetometer (micro-Teslas)): X=%i Y=%i Z=%i"%(int(mag.magnetic[0]),int(mag.magnetic[1]),int(mag.magnetic[2]))+"\n")
         #file.write("Accelerometer (m/s^2): X=%i Y=%i Z=%i"%(int(accel.acceleration[0]),int(accel.acceleration[1]),int(accel.acceleration[2]))+"\n")
-        file.write(str(int(accel.acceleration[0]))+",")
+        file.write(str(accel.acceleration[0])+",")
         file.write(str(int(accel.acceleration[1]))+",")
-        file.write(str(int(accel.acceleration[2]))+"\n")
+        file.write(str(accel.acceleration[2])+"\n")
         time.sleep(.1)
         #file.write(print1)
         #file.write(print2)
@@ -74,15 +86,7 @@ with open(os.path.join(repository_dir, 'temp.txt'),'a') as file:
         #or make a function to read in the file as data of an array
 
 
-with open(os.path.join(repository_dir, 'temp.txt'),'r') as file:
-    line=file.readline()
-    for line in file:
-        xTemp = line.split(',')
-        x1.append(int(xTemp[0]))
-        x2.append(int(xTemp[1]))
-        x3.append(int(xTemp[2]))
-        y1.append(yCounter)
-        yCounter += 1
+
 
 
 file.close()

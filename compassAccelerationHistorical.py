@@ -31,15 +31,18 @@ file.close()
 
 with open(os.path.join(repository_dir, 'temp.txt'),'a') as file:
     while not end:
-        print("Accelerometer (m/s^2): X=%0.3f Y=%0.3f Z=%0.3f"%(accel.acceleration[0],accel.acceleration[1],accel.acceleration[2]))
+        #print("Accelerometer (m/s^2): X=%0.3f Y=%0.3f Z=%0.3f"%(accel.acceleration[0],accel.acceleration[1],accel.acceleration[2]))
         print("Magnetometer (micro-teslas): X=%4.1f Y=%4.1f Z=%4.1f"%(mag.magnetic[0],mag.magnetic[1],mag.magnetic[2]))
         roll = math.atan2(accel.acceleration[0],accel.acceleration[2])
-        print("Roll (radians): %0.3f"%roll)
-        pitch = math.asin(accel.acceleration[0]/9.81)
-        print("Pitch (radians): %0.3f"%pitch)
+        #pitch = math.asin(accel.acceleration[0]/9.81)
         angle = math.degrees(math.atan2(mag.magnetic[1],mag.magnetic[0]))
+        angle-=80
+        if angle<0:
+            angle+=360
+        acceleration = (math.sqrt(accel.acceleration[0]**2 + accel.acceleration[1]**2 + accel.acceleration[2]**2) - 9.81)
         print("Angle (degrees): "+str(angle))
+        print("Acceleration: " + str(acceleration))
         file.write(str(roll)+",")
-        file.write(str(pitch)+"\n")
+        #file.write(str(pitch)+"\n")
         time.sleep(.1)
 file.close()
