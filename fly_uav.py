@@ -20,8 +20,9 @@ IMAGE_SIZE = (640, 360)
 NAV_DATA = (20, 500, 20)
 # X- and Y-axis threshold, altitude and altitude threshold for alignment
 ALIGN_DATA = (10, 10, 500, 20)
-# Known vlaues for x, y, z position of marker and heading of next marker
-MARKER_DATA = ((x, y, z, headingOfNextMarker), (x, y, z, headingOfNextMarker)) # TODO: fill in
+# Known vlaues for x, y, z position of each marker and yaw needed for path to 
+# next marker. The position of each data tuple corresponds with the marker ID.
+MARKER_DATA = ((x, y, z, yawForNextMarker), (x, y, z, yawForNextMarker)) # TODO: fill in
 
 # Allows manual override shutdown
 def exit_gracefully(signal, frame):
@@ -89,9 +90,14 @@ def align(camera, detector):
 	
 	adjust_altitude(ALIGN_DATA[2], ALIGN_DATA[3])
 
-# Orients yaw of drone to yaw of marker + heading for the next marker
-def orient():
-	pass
+# Orients yaw of drone to yaw needed for path to the next marker
+def orient(camera, detector):
+    drone_yaw = drone.NavData["demo"][2][2]
+    yaw_needed = MARKER_DATA[detect(camera, detector)["id"]][3]
+    turn_angle = abs(drone_yaw - yaw_needed)
+    if yaw_needed < drone_yaw:
+        turn_angle *= -1
+    drone.turnAngle(turn_angle, 1)
 
 # Navigates drone to a detected marker
 def marker_navigate(camera, detector):
@@ -157,13 +163,13 @@ def main():
 	
 	marker_navigate(camera, detector)
 	align(camera, detector)
-	orient()
+	orient(camera, detector)
     while not detect(camera, detector)["id"] == LAST_MARKER_ID:
         x_pos = drone.NavData["magneto"][0][0]
 		navigate(x_pos, camera, detector)
 		marker_navigate(camera, detector)
 		align(camera, detector)
-		orient()
+		orient(camera, detector)
 
     print("Landing")
     drone.shutdown()
