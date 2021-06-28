@@ -469,6 +469,10 @@ class Drone(object):
 	def land(self):
 		self.at("REF", [290717696]) #290717696=10001010101000000000000000000
 
+	#Function to set the altitude to a hard-coded limit
+	def setAltitude(altitude, self):
+		console.log("Setting self to altidude: "+str(altitude))
+
 	###### NavData commands
 	# Switches to Demo- or Full-NavData-mode
 	def useDemoMode(self,value):
@@ -1074,7 +1078,7 @@ def vCapture(VidPipePath, parent_pipe):
 		tlag =				time.time()-declag
 
 		if not codecOK and success:
-			
+
 			try:
 				if image.shape[:2]==(360,640) or image.shape[:2]==(368,640) or image.shape[:2]==(720,1280) or image.shape[:2]==(1080,1920):
 					codecOK = True
