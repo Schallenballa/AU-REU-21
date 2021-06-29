@@ -22,6 +22,7 @@ ALIGN_DATA = (30, 30, 1120, 30)
 # next marker. The position of each data tuple corresponds with the marker ID.
 MARKER_DATA = ((-115, -75, 145, -0.350), ("""x, y, z, yawForNextMarker""")) # TODO: fill in
 drone = ps_drone.Drone()
+
 # Allows manual override shutdown
 def exit_gracefully(signal, frame):
     print("Shutting down")
@@ -30,7 +31,7 @@ def exit_gracefully(signal, frame):
 signal.signal(signal.SIGQUIT, exit_gracefully)
 
 # Starts the drone
-def start_drone(drone):
+def start_drone():
     print("Starting")
     drone.startup()
 
@@ -43,7 +44,8 @@ def start_drone(drone):
 
     print("Taking off")
     drone.takeoff()
-    time.sleep(30)
+    time.sleep(10)
+
 # Detects and displays a marker in an image
 def detect(camera, detector):
     print("Starting detection...")
@@ -58,43 +60,43 @@ def detect(camera, detector):
        	    pos = detection[0]["center"].astype(int) + (-10, 10)
        	    cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
             cv2.imshow("IMG", img)
-        print(detection)
+        print(detection, "\n\nEnding detection...")
         return detection[0]
-    print("Ending detection...")
+    print(detection, "\n\nEnding detection...")
     return detection
-# Aligns drone with center of marker
-# Quadrants:
-# II    I
-# III   IV
+
+# Aligns drone with center of marker.
 # Successful alignment is determined when the center of the marker is within a 20x20 pixel-box of the detection area's center
-def align(drone, camera, detector):
+def align(camera, detector):
     # If the y-value of the AprilTag center is in the III or IV quadrant of the detection zone (leaves a +10-pixel buffer)
-    if detect(camera, detector)["center"][1] > IMAGE_SIZE[1] // 2 + ALIGN_DATA[1]: # Move backward
+    y_pos = detect(camera, detector)["center"][1]
+    if y_pos > IMAGE_SIZE[1] // 2 + ALIGN_DATA[1]: # Move backward
         drone.moveBackward()
         while detect(camera, detector)["center"][1] > IMAGE_SIZE[1] // 2 + ALIGN_DATA[1]:
             continue
     # Else if the y-value of the AprilTag center is in the I or II quadrant of the detection zone (leaves a -10-pixel buffer)
-    elif detect(camera, detector)["center"][1] < IMAGE_SIZE[1] // 2 - ALIGN_DATA[1]: # Move forward
+    elif y_pos < IMAGE_SIZE[1] // 2 - ALIGN_DATA[1]: # Move forward
         drone.moveForward()
         while detect(camera, detector)["center"][1] < IMAGE_SIZE[1] // 2 - ALIGN_DATA[1]:
             continue
     drone.stop()
     # If the x-value of the AprilTag center is in the I or IV quadrant of the detection zone (leaves a +10-pixel buffer)
-    if detect(camera, detector)["center"][0] > IMAGE_SIZE[0] // 2 + ALIGN_DATA[0]: # Move right
+    x_pos = detect(camera, detector)["center"][0]
+    if x_pos > IMAGE_SIZE[0] // 2 + ALIGN_DATA[0]: # Move right
         drone.moveRight()
         while detect(camera, detector)["center"][0] > IMAGE_SIZE[0] // 2 + ALIGN_DATA[0]:
             continue
     # Else if the x-value of the AprilTag center is in the II or III quadrant of the detection zone (leaves a -10-pixel buffer)
-    elif detect(camera, detector)["center"][0] < IMAGE_SIZE[0] // 2 - ALIGN_DATA[0]: # Move left
+    elif x_pos < IMAGE_SIZE[0] // 2 - ALIGN_DATA[0]: # Move left
         drone.moveLeft()
         while detect(camera, detector)["center"][0] < IMAGE_SIZE[0] // 2 - ALIGN_DATA[0]:
             continue
     drone.stop()
 
-    adjust_altitude(drone, ALIGN_DATA[2], ALIGN_DATA[3])
+    adjust_altitude(ALIGN_DATA[2], ALIGN_DATA[3])
 
 # Orients yaw of drone to yaw needed for path to the next marker
-def orient(drone, camera, detector):
+def orient(camera, detector):
     drone_yaw = drone.NavData["demo"][2][2]
     yaw_needed = MARKER_DATA[detect(camera, detector)["id"]][3]
     turn_angle = abs(drone_yaw - yaw_needed)
@@ -103,29 +105,30 @@ def orient(drone, camera, detector):
     drone.turnAngle(turn_angle, 1)
 
 # Navigates drone to a detected marker
-def marker_navigate(drone, camera, detector):
+def marker_navigate(camera, detector):
     drone.moveForward()
     # While the AprilTag center's y-value is outside of the acceptable detection range (but still detected, nevertheless)
     while detect(camera, detector)["center"][1] < IMAGE_SIZE[1] // 2 - ALIGN_DATA[1]:
         # If the x-value of the AprilTag's center is to the right of the detection center
-        if detect(camera, detector)["center"][0] > IMAGE_SIZE[0] // 2 + ALIGN_DATA[0]: # Move right
+        x_pos = detect(camera, detector)["center"][0]
+        if x_pos > IMAGE_SIZE[0] // 2 + ALIGN_DATA[0]: # Move right
             drone.moveRight()
             while detect(camera, detector)["center"][0] > IMAGE_SIZE[0] // 2 + ALIGN_DATA[0]:
                 continue
             drone.stop()
             drone.moveForward()
-        elif detect(camera, detector)["center"][0] < IMAGE_SIZE[0] // 2 - ALIGN_DATA[0]: # Move left
+        elif x_pos < IMAGE_SIZE[0] // 2 - ALIGN_DATA[0]: # Move left
             drone.moveLeft()
             while detect(camera, detector)["center"][0] < IMAGE_SIZE[0] // 2 - ALIGN_DATA[0]:
                 continue
             drone.stop()
             drone.moveForward()
-        if adjust_altitude(drone, ALIGN_DATA[2], ALIGN_DATA[3]):
+        if adjust_altitude(ALIGN_DATA[2], ALIGN_DATA[3]):
             drone.moveForward()
     drone.stop()
 
 # Navigates drone between markers
-def navigate(drone, x_pos, camera, detector):
+def navigate(x_pos, camera, detector):
     drone.moveForward()
     while len(detect(camera, detector)) == 0: # Continue until marker detected
         if drone.NavData["magneto"][0][0] < x_pos - NAV_DATA[0]: # Move right
@@ -140,12 +143,12 @@ def navigate(drone, x_pos, camera, detector):
                 continue
             drone.stop()
             drone.moveForward()
-        if adjust_altitude(drone, NAV_DATA[1], NAV_DATA[2]):
+        if adjust_altitude(NAV_DATA[1], NAV_DATA[2]):
             drone.moveForward()
 
 # Adjusts drone's altitude
 # Passes:  drone, 500, 20
-def adjust_altitude(drone, altitude, threshold):
+def adjust_altitude(altitude, threshold):
     if drone.NavData["altitude"][3] < altitude - threshold: # Increase altitude
         drone.moveUp()
         while drone.NavData["altitude"][3] < altitude - threshold:
@@ -165,21 +168,27 @@ def main():
     camera = cv2.VideoCapture(0)
     detector = apriltag("tagStandard41h12")
     detect(camera, detector)
-    drone = ps_drone.Drone()
-    start_drone(drone)
-
-    x_pos = drone.NavData["magneto"][0][0]
-    navigate(drone, x_pos, camera, detector)
-    marker_navigate(drone, camera, detector)
-    align(drone, camera, detector)
-#     orient(drone, camera, detector)
+    start_drone()
+    
+    # Initial alignment
+    print("Initiating alignment")
+    align(camera, detector)
+    print("Initiating orientation")
+    orient(camera, detector)
+    
+    # Navigate until last marker found and aligned with
 #     while not detect(camera, detector)["id"] == LAST_MARKER_ID:
 #         x_pos = drone.NavData["magneto"][0][0]
-#         navigate(drone, x_pos, camera, detector)
-#         marker_navigate(drone, camera, detector)
-#         align(drone, camera, detector)
-#         orient(drone, camera, detector)
+#         print("Initiating navigation")
+#         navigate(x_pos, camera, detector)
+#         print("Initiating marker-based navigation")
+#         marker_navigate(camera, detector)
+#         print("Initiating alignment")
+#         align(camera, detector)
+#         print("Initiating orientation")
+#         orient(camera, detector)
 
+    # Shutdown sequence
     print("Landing")
     drone.shutdown()
     cv2.destroyAllWindows()
