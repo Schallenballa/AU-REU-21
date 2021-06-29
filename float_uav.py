@@ -29,17 +29,17 @@ def detect(camera, detector):
     ret, img = camera.read()
     image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     detection = detector.detect(image)
-    if len(detection) != 0:
-        print("Marker detected!")
-        if detection[0]["margin"] >= 10:
-       	    rect = detection[0]["lb-rb-rt-lt"].astype(int).reshape((-1, 1, 2))
+    for det in detection:
+        if det["margin"] >= 10:
+            print("Marker detected!")
+       	    rect = det["lb-rb-rt-lt"].astype(int).reshape((-1, 1, 2))
             cv2.polylines(img, [rect], True, BLUE, 2)
-       	    ident = str(detection[0]["id"])
-       	    pos = detection[0]["center"].astype(int) + (-10, 10)
+       	    ident = str(det["id"])
+       	    pos = det["center"].astype(int) + (-10, 10)
        	    cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
-            cv2.imshow("IMG", img)
-        print(detection, "\n\nEnding detection...")
-        return detection[0]
+            #print(detection, "\n\nEnding detection...")
+            #return detection[0]
+    cv2.imshow("IMG", img)
     print(detection, "\n\nEnding detection...")
     return detection
 
