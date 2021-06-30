@@ -26,7 +26,7 @@ NAV_DATA = (20, 500, 20)
 ALIGN_DATA = (30, 30, 1120, 30)
 # Known vlaues for x, y, z-position and angle of each marker and yaw needed for path
 # to next marker. The position of each data tuple corresponds with the marker ID.
-MARKER_DATA = ((-115, -75, 145, """yaw for current marker""", -0.350), ("""x, y, z, yawForNextMarker""")) # TODO: fill in
+MARKER_DATA = ((70, -20, 105, 265, 225), ("""x, y, z, yawForNextMarker""")) # TODO: fill in
 drone = ps_drone.Drone()
 i2c = busio.I2C(board.SCL, board.SDA)
 mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(i2c)
@@ -123,7 +123,7 @@ def align(tag_id):
 
 # Navigates drone between markers
 def navigate(x_pos, camera, detector):
-    detection = detect(camera, detector))
+    detection = detect(camera, detector)
     drone.moveForward()
     while len(detection) == 0: # Continue until marker detected
         if drone.NavData["magneto"][0][0] < x_pos - NAV_DATA[0]: # Move right
@@ -140,7 +140,7 @@ def navigate(x_pos, camera, detector):
             drone.moveForward()
         if adjust_altitude(NAV_DATA[1], NAV_DATA[2]):
             drone.moveForward()
-        detection = detect(camera, detector))
+        detection = detect(camera, detector)
     drone.stop()
     return detection["id"]
 
@@ -196,12 +196,12 @@ def main():
     align(detection["id"])
 
     # Navigate until last marker found and aligned with
-#     while not detect(camera, detector)["id"] == LAST_MARKER_ID:
+#     while not detection["id"] == LAST_MARKER_ID:
 #         print("Orienting for next marker")
 #         orient(detection["id"], 4)
 #         print("Navigating")
 #         x_pos = drone.NavData["magneto"][0][0]
-#         navigate(x_pos, camera, detector)
+#         detection = navigate(x_pos, camera, detector)
 #         print("Orienting")
 #         orient(detection["id"], 3)
 #         print("Aligning")
