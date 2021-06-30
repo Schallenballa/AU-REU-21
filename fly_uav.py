@@ -44,23 +44,29 @@ def start_drone():
 
     print("Taking off")
     drone.takeoff()
-    time.sleep(10)
-
+    time.sleep(5)
+    drone.moveUp()
+    time.sleep(6)
+    drone.stop()
+    time.sleep(1)
 # Detects and displays a marker in an image
 def detect(camera, detector):
     print("Starting detection...")
     ret, img = camera.read()
-    image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    image1 = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    image = cv2.rotate(image1, cv2.ROTATE_180)
     detection = detector.detect(image)
     if len(detection) != 0:
-        if detection[0]["margin"] >= 10:
-       	    rect = detection[0]["lb-rb-rt-lt"].astype(int).reshape((-1, 1, 2))
-            cv2.polylines(img, [rect], True, BLUE, 2)
-       	    ident = str(detection[0]["id"])
-       	    pos = detection[0]["center"].astype(int) + (-10, 10)
-       	    cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
-            cv2.imshow("IMG", img)
-        print(detection, "\n\nEnding detection...")
+        cv2.imwrite('/home/pi/Desktop/image.jpg',image)
+        #if detection[0]["margin"] >= 10:
+       	    #rect = detection[0]["lb-rb-rt-lt"].astype(int).reshape((-1, 1, 2))
+            #cv2.polylines(img, [rect], True, BLUE, 2)
+       	    #ident = str(detection[0]["id"])
+       	    #pos = detection[0]["center"].astype(int) + (-10, 10)
+       	    #cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
+            #cv2.imshow("IMG", img)
+        print(detection, "\n\nEnding detection. Marker detected...",detection[0])
+        #cv2.imshow("IMG", img)
         return detection[0]
     print(detection, "\n\nEnding detection...")
     return detection
@@ -167,10 +173,11 @@ def adjust_altitude(altitude, threshold):
 def main():
     camera = cv2.VideoCapture(0)
     detector = apriltag("tagStandard41h12")
-    detect(camera, detector)
     start_drone()
     
     # Initial alignment
+    while len(detect(camera, detector)) == 0: # Wait for detection
+        continue
     print("Initiating alignment")
     align(camera, detector)
     print("Initiating orientation")
@@ -191,7 +198,7 @@ def main():
     # Shutdown sequence
     print("Landing")
     drone.shutdown()
-    cv2.destroyAllWindows()
+#     cv2.destroyAllWindows()
     print("Done")
 
 main()
