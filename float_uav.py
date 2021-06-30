@@ -25,22 +25,23 @@ def exit_gracefully(signal, frame):
 signal.signal(signal.SIGQUIT, exit_gracefully)
 
 def detect(camera, detector):
-    print("Starting detection...")
-    ret, img = camera.read()
-    image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    detection = detector.detect(image)
-    for det in detection:
-        if det["margin"] >= 10:
-            print("Marker detected!")
-       	    rect = det["lb-rb-rt-lt"].astype(int).reshape((-1, 1, 2))
-            cv2.polylines(img, [rect], True, BLUE, 2)
-       	    ident = str(det["id"])
-       	    pos = det["center"].astype(int) + (-10, 10)
-       	    cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
-            #print(detection, "\n\nEnding detection...")
-            #return detection[0]
-    cv2.imshow("IMG", img)
-    print(detection, "\n\nEnding detection...")
+    while cv2.waitKey(1) != 0x1b:
+        print("Starting detection...")
+        ret, img = camera.read()
+        image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        detection = detector.detect(image)
+        for det in detection:
+            if det["margin"] >= 10:
+                print("Marker detected!")
+           	    rect = det["lb-rb-rt-lt"].astype(int).reshape((-1, 1, 2))
+                cv2.polylines(img, [rect], True, BLUE, 2)
+           	    ident = str(det["id"])
+           	    pos = det["center"].astype(int) + (-10, 10)
+           	    cv2.putText(img, ident, tuple(pos), cv2.FONT_HERSHEY_SIMPLEX, 1, BLUE, 2)
+                #print(detection, "\n\nEnding detection...")
+                #return detection[0]
+        cv2.imshow("IMG", img)
+        print(detection, "\n\nEnding detection...")
     return detection
 
 def main():

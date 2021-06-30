@@ -73,34 +73,49 @@ def detect(camera, detector):
 
 # Aligns drone with center of marker.
 # Successful alignment is determined when the center of the marker is within a 20x20 pixel-box of the detection area's center
+# This alignment function is different than fly_uav.py because it does it at incremental values
 # Quadrants:
 # II  |  I
 #------------
 # III |  IV
 def align(camera, detector):
     # If the y-value of the AprilTag center is in the III or IV quadrant of the detection zone (leaves a +10-pixel buffer)
+    print("Beginning vertical alignment...")
     y_pos = detect(camera, detector)["center"][1]
     if y_pos > IMAGE_SIZE[1] // 2 + ALIGN_DATA[1]: # Move backward
-        drone.moveBackward()
         while detect(camera, detector)["center"][1] > IMAGE_SIZE[1] // 2 + ALIGN_DATA[1]:
-            continue
+            print("Moving backwards...")
+            drone.moveBackward()
+            time.sleep(1)
+            drone.stop()
+            time.sleep(1)
     # Else if the y-value of the AprilTag center is in the I or II quadrant of the detection zone (leaves a -10-pixel buffer)
     elif y_pos < IMAGE_SIZE[1] // 2 - ALIGN_DATA[1]: # Move forward
-        drone.moveForward()
         while detect(camera, detector)["center"][1] < IMAGE_SIZE[1] // 2 - ALIGN_DATA[1]:
-            continue
+            print("Moving forwards...")
+            drone.moveForward()
+            time.sleep(1)
+            drone.stop()
+            time.sleep(1)
     drone.stop()
     # If the x-value of the AprilTag center is in the I or IV quadrant of the detection zone (leaves a +10-pixel buffer)
+    print("Beginning horizontal alignment...")
     x_pos = detect(camera, detector)["center"][0]
     if x_pos > IMAGE_SIZE[0] // 2 + ALIGN_DATA[0]: # Move right
-        drone.moveRight()
         while detect(camera, detector)["center"][0] > IMAGE_SIZE[0] // 2 + ALIGN_DATA[0]:
-            continue
+            print("Moving right...")
+            drone.moveRight()
+            time.sleep(1)
+            drone.stop()
+            time.sleep(1)
     # Else if the x-value of the AprilTag center is in the II or III quadrant of the detection zone (leaves a -10-pixel buffer)
     elif x_pos < IMAGE_SIZE[0] // 2 - ALIGN_DATA[0]: # Move left
-        drone.moveLeft()
         while detect(camera, detector)["center"][0] < IMAGE_SIZE[0] // 2 - ALIGN_DATA[0]:
-            continue
+            print("Moving left...")
+            drone.moveLeft()
+            time.sleep(1)
+            drone.stop()
+            time.sleep(1)
     drone.stop()
 
     adjust_altitude(ALIGN_DATA[2], ALIGN_DATA[3])
