@@ -33,17 +33,17 @@ time.sleep(0.5)
 print("Taking off")
 drone.takeoff()                # Drone starts
 print("Sleeping")
-time.sleep(10)                # Gives the drone time to start
+time.sleep(12)                # Gives the drone time to start
 
-drone.moveForward()            # Drone flies forward...
-time.sleep(0.5)                  # ... for two seconds
-drone.stop()                   # Drone stops...
-time.sleep(2)                  # ... needs, like a car, time to stop
+#drone.moveForward()            # Drone flies forward...
+#time.sleep(0.5)                  # ... for two seconds
+#drone.stop()                   # Drone stops...
+#time.sleep(2)                  # ... needs, like a car, time to stop
 
-drone.moveBackward()       # Drone flies backward with a quarter speed...
-time.sleep(0.5)                # ... for one and a half seconds
-drone.stop()                   # Drone stops
-time.sleep(2)	
+#drone.moveBackward()       # Drone flies backward with a quarter speed...
+#time.sleep(0.5)                # ... for one and a half seconds
+#drone.stop()                   # Drone stops
+#time.sleep(2)	
 # 
 # drone.setSpeed(1.0)            # Sets default moving speed to 1.0 (=100%)
 # print(drone.setSpeed())         # Shows the default moving speed
