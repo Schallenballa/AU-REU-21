@@ -34,7 +34,7 @@ while not end:
     print("Acceleration (m/s^2): X=%0.3f Y=%0.3f Z=%0.3f"%accel.acceleration)
     print("Magnetometer (micro-Teslas)): X=%0.3f Y=%0.3f Z=%0.3f"%mag.magnetic)
     angle = math.degrees(math.atan2(mag.magnetic[1],mag.magnetic[0]))
-    angle-=80
+#    angle-=80
     if angle<0:
         angle+=360
     print("Angle (degrees): "+str(angle))
