@@ -69,6 +69,7 @@ def detect(camera, detector):
     image = cv2.rotate(image1, cv2.ROTATE_180)
     detection = detector.detect(image)
     if len(detection) != 0:
+        # Takes the picture with the currently-detected AprilTag and saves it to the Desktop
         cv2.imwrite('/home/pi/Desktop/image.jpg',image)
         #if detection[0]["margin"] >= 10:
        	    #rect = detection[0]["lb-rb-rt-lt"].astype(int).reshape((-1, 1, 2))
@@ -125,7 +126,15 @@ def align(tag_id):
 def navigate(x_pos, camera, detector):
     detection = detect(camera, detector)
     drone.moveForward()
+    start_time = time.time()
+    end_time = start_time+0.1
+    # While there is currently no marker detected
     while len(detection) == 0: # Continue until marker detected
+        start_time=time.time()
+        # Will run every 1/10th of a second (0.1)
+        if start_time>=end_time:
+            record_data() # Records a data point to both files
+            end_time = start_time+0.1
         if drone.NavData["magneto"][0][0] < x_pos - NAV_DATA[0]: # Move right
             drone.moveRight()
             while drone.NavData["magneto"][0][0] < x_pos - NAV_DATA[0]:
@@ -160,20 +169,28 @@ def adjust_altitude(altitude, threshold):
         return True
     return False
 
+# Clears & overrites the previous data files
+def initialize_files():
+    with open(os.path.join(repository_dir, 'magData.txt'), 'w') as file:
+        file.write("")
+    file.close()
+
 # Records x, y, z position and yaw angle data of drone
 def record_data():
-    with open(os.path.join(repository_dir, 'temp.txt'), 'a') as file:
+    print("Recording data points...")
+    with open(os.path.join(repository_dir, 'magData.txt'), 'a') as file:
         print("Magnetometer (micro-teslas): X=%4.1f Y=%4.1f Z=%4.1f"%(mag.magnetic[0],mag.magnetic[1],mag.magnetic[2]))
         file.write(str(int(mag.magnetic[0]))+",")
         file.write(str(int(mag.magnetic[1]))+",")
         file.write(str(int(mag.magnetic[2]))+"\n")
+    file.close()
+    with open(os.path.join(repository_dir, 'yawData.txt'), 'a') as file:
         angle = math.degrees(math.atan2(mag.magnetic[1],mag.magnetic[0]))
         angle-=80
         if angle<0:
             angle+=360
         print("Angle (degrees): "+str(angle))
         file.write(str(angle)+"\n")
-        time.sleep(.1)
     file.close()
 
 # Controls program execution
@@ -181,9 +198,10 @@ def main():
     with open(os.path.join(repository_dir, 'temp.txt'), 'w') as file:
         file.write("")
     file.close()
-    
+
     camera = cv2.VideoCapture(0)
     detector = apriltag("tagStandard41h12")
+    initialize_files()
     start_drone()
 
     # Initial alignment
