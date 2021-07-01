@@ -14,7 +14,7 @@
 import time
 import sys
 import ps_drone                                                               # Import PS-Drone-API
-#from pynput import keyboard
+from pynput import keyboard
 import signal
 
 
@@ -30,16 +30,16 @@ time.sleep(1)                                                               # Gi
 
 ##### Mainprogram begin #####
 end = False
-# 
-# def on_press(key):
-#     global end
-#     end = True
-#     return False
-# 
-# listener = keyboard.Listener(on_press=on_press)
-# listener.start()
 
-def shutdown_gracefully(signal, frame):
+def on_press(key):
+    global end
+    end = True
+    return False
+
+listener = keyboard.Listener(on_press=on_press)
+listener.start()
+
+def exit_gracefully(signal, frame):
     print("Shutting down")
     drone.shutdown()
 
@@ -55,5 +55,10 @@ while not end:
     print ("Altitude / sensor / pressure: "+str(drone.NavData["altitude"][3])+" / "+str(drone.State[21])+" / "+str(drone.NavData["pressure_raw"][0]))
     print ("Megnetometer [X,Y,Z]:         "+str(drone.NavData["magneto"][0]))
     print ("Wifi link quality:            "+str(drone.NavData["wifi"]))
+    drone_yaw = drone.NavData["demo"][2][2]
+    if drone_yaw<0:
+        drone_yaw+=360
+    print("Current yaw: ",drone_yaw)
+    time.sleep(1)
     
 drone.shutdown()
