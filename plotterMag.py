@@ -14,7 +14,7 @@ y1 = []
 
 yCounter = 0
 
-with open(os.path.join(repository_dir, 'temp.txt'),'r') as file:
+with open(os.path.join(repository_dir, 'magData.txt'),'r') as file:
     line=file.readline()
     for line in file:
         xTemp = line.split(',')
