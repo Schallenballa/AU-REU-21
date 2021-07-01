@@ -17,11 +17,11 @@ with open(os.path.join(repository_dir, 'yawData.txt'),'r') as file:
         y1.append(yCounter)
         yCounter += 1
 
-plt.plot(y1,x1, color='blue',label = "Yaw/Heading (º)")
+plt.plot(y1,x1, color='blue',label = "Yaw/Heading")
 
 plt.xlabel('1/10th seconds')
 
-plt.ylabel('Degreesº')
+plt.ylabel('Degrees')
 
 plt.title('Timeline of Yaw/Heading')
 
