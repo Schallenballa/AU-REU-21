@@ -86,7 +86,9 @@ def detect(camera, detector):
 
 # Orients yaw of drone to yaw needed for path to the next marker
 def orient(tag_id, index):
-    drone_yaw = drone.NavData["demo"][2][2]
+    drone_yaw = math.degrees(math.atan2(mag.magnetic[1],mag.magnetic[0])) - 80
+    if drone_yaw<0:
+        drone_yaw+=360
     yaw_needed = MARKER_DATA[tag_id][index]
     turn_angle = abs(drone_yaw - yaw_needed)
     if yaw_needed < drone_yaw:
@@ -98,25 +100,25 @@ def orient(tag_id, index):
 def align(tag_id):
     for i in range(2):
         # If the y-value of the AprilTag center is in the I or II quadrant of the detection zone (leaves a -10-pixel buffer)
-        if drone.NavData["magneto"][0][1] < MARKER_DATA[tag_id][1] - ALIGN_DATA[1]: # Move forward
+        if mag.magnetic[1] < MARKER_DATA[tag_id][1] - ALIGN_DATA[1]: # Move forward
             drone.moveForward()
-            while drone.NavData["magneto"][0][1] < MARKER_DATA[tag_id][1] - ALIGN_DATA[1]:
+            while mag.magnetic[1] < MARKER_DATA[tag_id][1] - ALIGN_DATA[1]:
                 continue
         drone.stop()
         # If the y-value of the AprilTag center is in the III or IV quadrant of the detection zone (leaves a +10-pixel buffer)
-        if drone.NavData["magneto"][0][1] > MARKER_DATA[tag_id][1] + ALIGN_DATA[1]: # Move backward
+        if mag.magnetic[1] > MARKER_DATA[tag_id][1] + ALIGN_DATA[1]: # Move backward
             drone.moveBackward()
-            while drone.NavData["magneto"][0][1] > MARKER_DATA[tag_id][1] + ALIGN_DATA[1]:
+            while mag.magnetic[1] > MARKER_DATA[tag_id][1] + ALIGN_DATA[1]:
                 continue
         # If the x-value of the AprilTag center is in the I or IV quadrant of the detection zone (leaves a +10-pixel buffer)
-        if drone.NavData["magneto"][0][0] < MARKER_DATA[tag_id][0] - ALIGN_DATA[0]: # Move right
+        if mag.magnetic[0] < MARKER_DATA[tag_id][0] - ALIGN_DATA[0]: # Move right
             drone.moveRight()
-            while drone.NavData["magneto"][0][0] < MARKER_DATA[tag_id][0] - ALIGN_DATA[0]:
+            while mag.magnetic[0] < MARKER_DATA[tag_id][0] - ALIGN_DATA[0]:
                 continue
         # If the x-value of the AprilTag center is in the II or III quadrant of the detection zone (leaves a -10-pixel buffer)
-        if drone.NavData["magneto"][0][0] > MARKER_DATA[tag_id][0] + ALIGN_DATA[0]: # Move left
+        if mag.magnetic[0] > MARKER_DATA[tag_id][0] + ALIGN_DATA[0]: # Move left
             drone.moveLeft()
-            while drone.NavData["magneto"][0][0] > MARKER_DATA[tag_id][0] + ALIGN_DATA[0]:
+            while mag.magnetic[0] > MARKER_DATA[tag_id][0] + ALIGN_DATA[0]:
                 continue
         drone.stop()
 
@@ -135,15 +137,15 @@ def navigate(x_pos, camera, detector):
         if start_time>=end_time:
             record_data() # Records a data point to both files
             end_time = start_time+0.1
-        if drone.NavData["magneto"][0][0] < x_pos - NAV_DATA[0]: # Move right
+        if mag.magnetic[0] < x_pos - NAV_DATA[0]: # Move right
             drone.moveRight()
-            while drone.NavData["magneto"][0][0] < x_pos - NAV_DATA[0]:
+            while mag.magnetic[0] < x_pos - NAV_DATA[0]:
                 continue
             drone.stop()
             drone.moveForward()
-        elif drone.NavData["magneto"][0][0] > x_pos + NAV_DATA[0]: # Move left
+        elif mag.magnetic[0] > x_pos + NAV_DATA[0]: # Move left
             drone.moveLeft()
-            while drone.NavData["magneto"][0][0] > x_pos + NAV_DATA[0]:
+            while mag.magnetic[0] > x_pos + NAV_DATA[0]:
                 continue
             drone.stop()
             drone.moveForward()
@@ -155,15 +157,15 @@ def navigate(x_pos, camera, detector):
 
 # Adjusts drone's altitude
 def adjust_altitude(altitude, threshold):
-    if drone.NavData["altitude"][3] < altitude - threshold: # Increase altitude
+    if mag.magnetic[2] < altitude - threshold: # Increase altitude
         drone.moveUp()
-        while drone.NavData["altitude"][3] < altitude - threshold:
+        while mag.magnetic[2] < altitude - threshold:
             continue
         drone.stop()
         return True
-    elif drone.NavData["altitude"][3] > altitude + threshold: # Decrease altitude
+    elif mag.magnetic[2] > altitude + threshold: # Decrease altitude
         drone.moveDown()
-        while drone.NavData["altitude"][3] > altitude + threshold:
+        while mag.magnetic[2] > altitude + threshold:
             continue
         drone.stop()
         return True
@@ -172,6 +174,9 @@ def adjust_altitude(altitude, threshold):
 # Clears & overrites the previous data files
 def initialize_files():
     with open(os.path.join(repository_dir, 'magData.txt'), 'w') as file:
+        file.write("")
+    file.close()
+    with open(os.path.join(repository_dir, 'yawData.txt'), 'w') as file:
         file.write("")
     file.close()
 
@@ -185,8 +190,7 @@ def record_data():
         file.write(str(int(mag.magnetic[2]))+"\n")
     file.close()
     with open(os.path.join(repository_dir, 'yawData.txt'), 'a') as file:
-        angle = math.degrees(math.atan2(mag.magnetic[1],mag.magnetic[0]))
-        angle-=80
+        angle = math.degrees(math.atan2(mag.magnetic[1],mag.magnetic[0])) - 80
         if angle<0:
             angle+=360
         print("Angle (degrees): "+str(angle))
@@ -195,10 +199,6 @@ def record_data():
 
 # Controls program execution
 def main():
-    with open(os.path.join(repository_dir, 'temp.txt'), 'w') as file:
-        file.write("")
-    file.close()
-
     camera = cv2.VideoCapture(0)
     detector = apriltag("tagStandard41h12")
     initialize_files()
