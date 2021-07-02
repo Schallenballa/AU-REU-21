@@ -5,7 +5,7 @@ import numpy as np
 import signal
 import ps_drone
 
-drone = ps_drone.Drone() 
+drone = ps_drone.Drone()
 
 home_dir = os.path.expanduser('~')
 repository_dir = os.path.join(home_dir, 'Desktop/AU-REU-21')
@@ -17,7 +17,7 @@ while (drone.getBattery()[0] == -1):  time.sleep(0.1)                         # 
 print ("Battery: "+str(drone.getBattery()[0])+"%  "+str(drone.getBattery()[1])) # Gives a battery-status
 drone.useDemoMode(False)                                                      # Give me everything...fast
 drone.getNDpackage(["demo","pressure_raw","altitude","magneto","wifi"])       # Packets, which shall be decoded
-time.sleep(1)       
+time.sleep(1)
 
 end = False
 
@@ -40,7 +40,7 @@ with open(os.path.join(repository_dir, 'yawData.txt'),'a') as file:
         #roll = math.atan2(accel.acceleration[0],accel.acceleration[2])
         #pitch = math.asin(accel.acceleration[0]/9.81)
         angle = math.degrees(math.atan2(drone.NavData["magneto"][0][1], drone.NavData["magneto"][0][0]))
-        angle-=30
+        #angle-=30
         if angle<0:
             angle+=360
         #acceleration = (math.sqrt(accel.acceleration[0]**2 + accel.acceleration[1]**2 + accel.acceleration[2]**2) - 9.81)
