@@ -1,24 +1,17 @@
-"""
-This program flies a UAV along a predetermined path.
-
-Author: Nicholas Dunn
-Date: 06/24/2021
-"""
-
 import time
 import signal
 import cv2
 from apriltag import apriltag
 import ps_drone
 import os
-import board
-import busio
-import adafruit_lsm303_accel
-import adafruit_lsm303dlh_mag
+#import board
+#import busio
+#import adafruit_lsm303_accel
+#import adafruit_lsm303dlh_mag
 import math
 
 BLUE = 255, 0, 0
-LAST_MARKER_ID = 0
+LAST_MARKER_ID = 1
 IMAGE_SIZE = (640, 360)
 # X-axis threshold, altitude, and altitude threshold for navigation
 NAV_DATA = (20, 500, 20)
@@ -26,11 +19,11 @@ NAV_DATA = (20, 500, 20)
 ALIGN_DATA = (30, 30, -35, 30)
 # Known vlaues for x, y, z-position and angle of each marker and yaw needed for path
 # to next marker. The position of each data tuple corresponds with the marker ID.
-MARKER_DATA = ((-70, 55, -105, 275, 185), ("""x, y, z, yawForNextMarker""")) # TODO: fill in
+MARKER_DATA = ((-70, 55, -105, 275, 70), (-70, 55, -105, 350, 355)) # TODO: fill in
 drone = ps_drone.Drone()
-i2c = busio.I2C(board.SCL, board.SDA)
-mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(i2c)
-accel = adafruit_lsm303_accel.LSM303_Accel(i2c)
+#i2c = busio.I2C(board.SCL, board.SDA)
+#mag = adafruit_lsm303dlh_mag.LSM303DLH_Mag(i2c)
+#accel = adafruit_lsm303_accel.LSM303_Accel(i2c)
 
 home_dir = os.path.expanduser('~')
 repository_dir = os.path.join(home_dir, 'Desktop/AU-REU-21')
@@ -53,7 +46,8 @@ def start_drone():
     time.sleep(0.5)
 
     print ("Battery: "+str(drone.getBattery()[0])+"%  "+str(drone.getBattery()[1]))
-
+    drone.useDemoMode(False)                                                      # Give me everything...fast
+    drone.getNDpackage(["demo","pressure_raw","altitude","magneto","wifi"])       # Packets, which shall be decoded
     print("Taking off")
     drone.takeoff()
     time.sleep(10)
@@ -86,17 +80,21 @@ def detect(camera, detector):
 
 # Orients yaw of drone to yaw needed for path to the next marker
 def orient(tag_id, index):
-    drone_yaw = drone.NavData["demo"][2][2] - 33
-    if drone_yaw<0:
-        drone_yaw+=360
-    print("Current yaw: ",drone_yaw)
+    #drone_yaw = drone.NavData["demo"][2][2]
+    #if drone_yaw<0:
+    #    drone_yaw+=360
+    #print("Current yaw: ",drone_yaw)
     yaw_needed = MARKER_DATA[tag_id][index]
-    turn_angle = abs(drone_yaw - yaw_needed)
-    print("Calculated turn angle: ",turn_angle)
-    if yaw_needed < drone_yaw:
-        turn_angle *= -1
-    print("Final turn angle: ",turn_angle)
-    drone.turnAngle(turn_angle, 1)
+    print("Yaw needed: ",yaw_needed)
+    #turn_angle = abs(drone_yaw - yaw_needed)
+    #print("Calculated turn angle: ",turn_angle)
+#     if turn_angle > 180:
+#         turn_angle = 360 - turn_angle
+    #if yaw_needed < drone_yaw:
+    #    turn_angle *= -1
+    #print("Final turn angle: ",turn_angle)
+    #drone.turnAngle(turn_angle, 1)
+    drone.turnAngle(yaw_needed,1)
     print("Finished turning...")
 # Aligns drone with center of marker.
 # Successful alignment is determined when the center of the marker is within a 20x20 pixel-box of the detection area's center
@@ -136,19 +134,17 @@ def orient(tag_id, index):
 # Navigates drone between markers
 def navigate(camera, detector):
     detection = detect(camera, detector)
-    drone.moveForward()
-    start_time = time.time()
-    end_time = start_time+0.1
+    #drone.moveForward()
+    #time.sleep(0.5)
     # While there is currently no marker detected
     while len(detection) == 0: # Continue until marker detected
         drone.moveForward()
-        start_time=time.time()
-        # Will run every 1/10th of a second (0.1)
-        if start_time>=end_time:
-            record_data() # Records a data point to both files
-            end_time = start_time+0.1
-        detection = detect(camera, detector)
-        time.sleep(0.5)
+        time.sleep(1.5)
+        drone.stop()
+        record_data() # Records a data point to both files
+        end_time = time.time() + 5
+        while len(detection) == 0 and end_time > time.time():
+            detection = detect(camera, detector)
     drone.stop()
     return detection["id"]
 
@@ -181,17 +177,15 @@ def initialize_files():
 def record_data():
     print("Recording data points...")
     with open(os.path.join(repository_dir, 'magData.txt'), 'a') as file:
-        print("Magnetometer (micro-teslas): X=%4.1f Y=%4.1f Z=%4.1f"%(mag.magnetic[0],mag.magnetic[1],mag.magnetic[2]))
-        file.write(str(int(mag.magnetic[0]))+",")
-        file.write(str(int(mag.magnetic[1]))+",")
-        file.write(str(int(mag.magnetic[2]))+"\n")
+        #print("Magnetometer (micro-teslas): X=%4.1f Y=%4.1f Z=%4.1f\n" % (drone.NavData["magneto"][0][0], drone.NavData["magneto"][0][1], drone.NavData["magneto"][0][2]))
+        file.write(str(drone.NavData["magneto"][0][0]) + "," + str(drone.NavData["magneto"][0][1]) +"," + str(drone.NavData["magneto"][0][2]) + "\n")
     file.close()
     with open(os.path.join(repository_dir, 'yawData.txt'), 'a') as file:
-        angle = math.degrees(math.atan2(mag.magnetic[1],mag.magnetic[0])) - 80
+        angle = drone.NavData["demo"][2][2]
         if angle<0:
             angle+=360
-        print("Angle (degrees): "+str(angle))
-        file.write(str(angle)+"\n")
+        print("Angle (degrees): " + str(angle))
+        file.write(str(angle) + "\n")
     file.close()
 
 # Controls program execution
@@ -201,27 +195,20 @@ def main():
     initialize_files()
     start_drone()
     
-    print("Orienting")
-#    orient(0, 3)
-#    time.sleep(5)
     print("Navigating")
-    detection = navigate(camera, detector)
-    time.sleep(5)
-    print("Orienting for next marker") # TODO: Remove this line
-    orient(detection["id"], 4)         # TODO: Remove this line
-    time.sleep(5)
-# 
-#     # Navigate until last marker found and aligned with
-#     while detection["id"] != LAST_MARKER_ID:
-#         print("Orienting for next marker")
-#         orient(detection["id"], 4)
-#         time.sleep(2)
-#         print("Navigating")
-#         detection = navigate(camera, detector)
-#         time.sleep(2)
+    maker_id = navigate(camera, detector)
+ 
+    # Navigate until last marker found and aligned with
+    while maker_id != LAST_MARKER_ID:
+        time.sleep(5)
+        print("Orienting for next marker")
+        orient(maker_id, 4)
+        time.sleep(10)
+        print("Navigating")
+        maker_id = navigate(camera, detector)
 
     # Shutdown sequence
-    print("Landing")
+    print("Mission accomplished. Landing.")
     drone.shutdown()
     print("Done")
 
