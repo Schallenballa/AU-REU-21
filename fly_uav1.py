@@ -138,10 +138,25 @@ def navigate(camera, detector):
     #time.sleep(0.5)
     # While there is currently no marker detected
     while len(detection) == 0: # Continue until marker detected
+        print("Moving forward1...")
         drone.moveForward()
         time.sleep(1.5)
         drone.stop()
         record_data() # Records a data point to both files
+        end_time = time.time() + 5
+        while len(detection) == 0 and end_time > time.time():
+            detection = detect(camera, detector)
+    drone.stop()
+    return detection["id"]
+
+def navigate2(camera, detector):
+    detection = detect(camera, detector)
+    while detection != 1:
+        print("Moving forward2...")
+        drone.moveForward()
+        time.sleep(1.5)
+        drone.stop()
+        record_data()
         end_time = time.time() + 5
         while len(detection) == 0 and end_time > time.time():
             detection = detect(camera, detector)
@@ -197,7 +212,7 @@ def main():
     
     print("Navigating")
     maker_id = navigate(camera, detector)
- 
+    print("Previous marker detected: "+str(maker_id))
     # Navigate until last marker found and aligned with
     while maker_id != LAST_MARKER_ID:
         time.sleep(5)
@@ -205,7 +220,8 @@ def main():
         orient(maker_id, 4)
         time.sleep(10)
         print("Navigating")
-        maker_id = navigate(camera, detector)
+        maker_id = navigate2(camera, detector)
+        print("New, previous marker detected: "+str(maker_id))
 
     # Shutdown sequence
     print("Mission accomplished. Landing.")

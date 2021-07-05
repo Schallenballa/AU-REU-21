@@ -13,7 +13,7 @@ yCounter = 0
 with open(os.path.join(repository_dir, 'yawData.txt'),'r') as file:
     line=file.readline()
     for line in file:
-        x1.append(line)
+        x1.append(int(float(line)))
         y1.append(yCounter)
         yCounter += 1
 

@@ -46,7 +46,7 @@ with open(os.path.join(repository_dir, 'yawData.txt'),'a') as file:
         #acceleration = (math.sqrt(accel.acceleration[0]**2 + accel.acceleration[1]**2 + accel.acceleration[2]**2) - 9.81)
         print("Angle (degrees): "+str(angle))
         #print("Acceleration: " + str(acceleration))
-        file.write(str(angle)+",")
+        file.write(str(angle)+"\n")
         #file.write(str(pitch)+"\n")
         time.sleep(.1)
 file.close()
