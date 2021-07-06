@@ -116,17 +116,16 @@ def main():
     start_drone()
     
     print("Navigating")
-    maker_id = navigate(-1, camera, detector)
+    marker_id = navigate(-1, camera, detector)
 
     # Navigate until last marker found and aligned with
-    while maker_id != LAST_MARKER_ID:
+    while marker_id != LAST_MARKER_ID:
         time.sleep(5)
         print("Orienting for next marker")
-        orient(maker_id)
+        orient(marker_id)
         time.sleep(10)
         print("Navigating")
-        maker_id = navigate(marker_id, camera, detector)
-        print("New, previous marker detected: " + str(maker_id))
+        marker_id = navigate(marker_id, camera, detector)
 
     # Shutdown sequence
     print("Mission accomplished. Landing.")
